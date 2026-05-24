@@ -7,23 +7,65 @@ import { useState, useRef, useEffect } from 'react'
 import { Search, X, UserX } from 'lucide-react'
 import clsx from 'clsx'
 import type { User, Slot, RemoteData } from '../../types'
+import type { GitHubConfig } from '../../lib/github'
 import { positionToCss, scaleToCss } from '../../lib/imageUtils'
+import { useAuthImage } from '../../hooks/useAuthImage'
+import { getAuthImageUrl } from '../../lib/imageCache'
 
 interface Props {
-  slot: Slot
-  users: RemoteData<User>[]
-  imageBaseUrl: string
+  slot:     Slot
+  users:    RemoteData<User>[]
+  cfg:      GitHubConfig          // replaces imageBaseUrl – needed for auth image fetching
   onAssign: (slotId: string, userId: string | undefined) => Promise<void>
-  saving?: boolean
+  saving?:  boolean
 }
 
-export default function SlotAssignment({ slot, users, imageBaseUrl, onAssign, saving }: Props) {
+// ── Per-row avatar in the dropdown list ───────────────────────
+// Rendered as a plain component (not a hook) so it's safe in a list.
+
+function UserAvatar({ user, cfg }: { user: User; cfg: GitHubConfig }) {
+  const raw = user.image
+    ? `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch ?? 'main'}/${user.image}`
+    : null
+  const [src, setSrc] = useState<string | null>(raw)
+
+  const handleError = async () => {
+    if (!user.image) return
+    const url = await getAuthImageUrl(cfg, user.image)
+    if (url) setSrc(url)
+  }
+
+  if (!src) {
+    return (
+      <div className="w-full h-full flex items-center justify-center text-white/40 text-sm font-bold"
+        style={user.color ? { color: user.color } : {}}>
+        {user.displayName.charAt(0).toUpperCase()}
+      </div>
+    )
+  }
+  return (
+    <img
+      src={src}
+      alt={user.displayName}
+      className="w-full h-full object-cover"
+      style={{ objectPosition: positionToCss(user.imagePosition?.x, user.imagePosition?.y) }}
+      onError={handleError}
+    />
+  )
+}
+
+// ── Main component ────────────────────────────────────────────
+
+export default function SlotAssignment({ slot, users, cfg, onAssign, saving }: Props) {
   const [open, setOpen]   = useState(false)
   const [query, setQuery] = useState('')
   const inputRef          = useRef<HTMLInputElement>(null)
   const panelRef          = useRef<HTMLDivElement>(null)
 
   const assigned = users.find((u) => u.data.id === slot.userId)?.data
+
+  // Auth image for the slot tile background (works for private repos)
+  const slotBgUrl = useAuthImage(assigned?.image ? cfg : null, assigned?.image ?? null)
 
   const filtered = users
     .map((u) => u.data)
@@ -74,24 +116,24 @@ export default function SlotAssignment({ slot, users, imageBaseUrl, onAssign, sa
         )}
       >
         {/* Background image */}
-        {assigned?.image && (
+        {assigned?.image && slotBgUrl ? (
           <>
             <div
-              className="absolute inset-0 bg-cover transition-all duration-500"
+              className="absolute inset-0 transition-all duration-500"
               style={{
-                backgroundImage: `url(${imageBaseUrl}/${assigned.image})`,
+                backgroundImage:    `url(${slotBgUrl})`,
                 backgroundPosition: positionToCss(assigned.imagePosition?.x, assigned.imagePosition?.y),
-                backgroundSize: scaleToCss(assigned.imageScale ?? 1.15),
+                backgroundSize:     scaleToCss(assigned.imageScale ?? 1.15),
+                backgroundRepeat:   'no-repeat',
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
           </>
-        )}
-        {!assigned?.image && (
+        ) : (
           <div className="absolute inset-0 bg-surface-700" />
         )}
 
-        {/* Slot name */}
+        {/* Slot name badge */}
         <div className="relative z-10 px-3 pt-3">
           <span
             className="text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full bg-black/30 border border-white/20 text-white/80"
@@ -179,21 +221,8 @@ export default function SlotAssignment({ slot, users, imageBaseUrl, onAssign, sa
                     slot.userId === user.id && 'bg-brand-600/10',
                   )}
                 >
-                  {/* Avatar */}
                   <div className="w-9 h-9 rounded-full overflow-hidden bg-surface-600 shrink-0">
-                    {user.image ? (
-                      <img
-                        src={`${imageBaseUrl}/${user.image}`}
-                        alt={user.displayName}
-                        className="w-full h-full object-cover"
-                        style={{ objectPosition: positionToCss(user.imagePosition?.x, user.imagePosition?.y) }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-white/40 text-sm font-bold"
-                        style={user.color ? { color: user.color } : {}}>
-                        {user.displayName.charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                    <UserAvatar user={user} cfg={cfg} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white font-semibold truncate">{user.displayName}</p>

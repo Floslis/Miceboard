@@ -200,6 +200,20 @@ export async function listUsers(cfg: GitHubConfig): Promise<RemoteData<User>[]> 
     .map((r) => r.value)
 }
 
+/** Get just the SHA of a file without decoding content (for binary files like images) */
+export async function getFileSha(cfg: GitHubConfig, path: string): Promise<string | null> {
+  try {
+    const ref = cfg.branch ?? 'main'
+    const url = `${API}/repos/${cfg.owner}/${cfg.repo}/contents/${path}?ref=${ref}&t=${Date.now()}`
+    const res = await fetch(url, { headers: headers(cfg.token) })
+    if (!res.ok) return null
+    const file = await res.json() as { sha: string }
+    return file.sha ?? null
+  } catch {
+    return null
+  }
+}
+
 export async function getDisplay(cfg: GitHubConfig, id: string) {
   return getFile<Display>(cfg, `displays/${id}.json`)
 }
@@ -217,6 +231,14 @@ export async function saveDisplay(
     sha,
     `chore: update display ${display.name}`,
   )
+}
+
+export async function deleteDisplay(
+  cfg: GitHubConfig,
+  id: string,
+  sha: string,
+): Promise<void> {
+  return deleteFile(cfg, `displays/${id}.json`, sha, `chore: delete display ${id}`)
 }
 
 export async function listDisplays(cfg: GitHubConfig): Promise<RemoteData<Display>[]> {
@@ -336,4 +358,40 @@ export async function initializeDataRepo(cfg: GitHubConfig): Promise<InitResult>
   await ensure('images/.gitkeep', {}, 'chore: init images folder')
 
   return { created, skipped }
+}
+
+/**
+ * Hard reset: delete ALL users, displays, images, and settings,
+ * then re-run initializeDataRepo with defaults.
+ * Use this to recover from a corrupted state.
+ */
+export async function resetDataRepo(cfg: GitHubConfig): Promise<InitResult> {
+  // Delete all users
+  const userFiles = (await listDir(cfg, 'users')).filter((f) => f.name.endsWith('.json'))
+  for (const f of userFiles) {
+    await deleteFile(cfg, f.path, f.sha, 'chore: reset – delete user').catch(() => {/* ignore */})
+  }
+
+  // Delete all displays
+  const displayFiles = (await listDir(cfg, 'displays')).filter((f) => f.name.endsWith('.json'))
+  for (const f of displayFiles) {
+    await deleteFile(cfg, f.path, f.sha, 'chore: reset – delete display').catch(() => {/* ignore */})
+  }
+
+  // Delete all uploaded images (keep .gitkeep)
+  const imageFiles = (await listDir(cfg, 'images')).filter(
+    (f) => !f.name.startsWith('.') && f.name !== '.gitkeep',
+  )
+  for (const f of imageFiles) {
+    await deleteFile(cfg, f.path, f.sha, 'chore: reset – delete image').catch(() => {/* ignore */})
+  }
+
+  // Delete settings
+  try {
+    const sha = await getFileSha(cfg, 'config/settings.json')
+    if (sha) await deleteFile(cfg, 'config/settings.json', sha, 'chore: reset – delete settings')
+  } catch { /* file didn't exist */ }
+
+  // Re-create defaults
+  return initializeDataRepo(cfg)
 }

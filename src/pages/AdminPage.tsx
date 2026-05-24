@@ -6,7 +6,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Mic, Users, Monitor, Settings, LogOut, Plus, RefreshCw,
-  Upload, X, LayoutDashboard, ChevronRight
+  Upload, X, LayoutDashboard, ChevronRight, AlertTriangle
 } from 'lucide-react'
 import clsx from 'clsx'
 import type { User, Display, RemoteData } from '../types'
@@ -20,15 +20,58 @@ import DisplayPanel from '../components/admin/DisplayPanel'
 import UserEditor from '../components/admin/UserEditor'
 import ToastContainer, { useToasts } from '../components/common/Toast'
 import LoadingSpinner from '../components/common/LoadingSpinner'
+import { useAuthImage } from '../hooks/useAuthImage'
+import type { GitHubConfig } from '../lib/github'
 
 type Section = 'overview' | 'displays' | 'users' | 'settings'
+
+// ── User card in the grid (needs its own component to call useAuthImage) ──
+
+function UserCard({
+  user, cfg, onClick,
+}: { user: RemoteData<User>; cfg: GitHubConfig; onClick: () => void }) {
+  const bgUrl = useAuthImage(user.data.image ? cfg : null, user.data.image ?? null)
+  const u = user.data
+  return (
+    <button
+      onClick={onClick}
+      className="group relative flex flex-col overflow-hidden rounded-2xl bg-surface-700 border border-white/10 hover:border-brand-500/40 transition-all aspect-[3/4]"
+    >
+      {u.image && bgUrl && (
+        <>
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:    `url(${bgUrl})`,
+              backgroundPosition: `${u.imagePosition?.x ?? 50}% ${u.imagePosition?.y ?? 30}%`,
+              backgroundSize:     `${Math.round((u.imageScale ?? 1.15) * 100)}%`,
+              backgroundRepeat:   'no-repeat',
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/0" />
+        </>
+      )}
+      <div className="flex-1" />
+      <div className="relative z-10 px-3 pb-3">
+        <p className="text-base font-bold text-white leading-tight"
+          style={u.color ? { color: u.color } : {}}>
+          {u.displayName}
+        </p>
+        {u.role && <p className="text-xs text-white/40 mt-0.5 truncate">{u.role}</p>}
+      </div>
+      <div className="absolute inset-0 bg-brand-600/0 group-hover:bg-brand-600/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+        <span className="bg-black/60 text-white text-xs font-semibold px-3 py-1.5 rounded-full">Bearbeiten</span>
+      </div>
+    </button>
+  )
+}
 
 export default function AdminPage() {
   const { logout }                  = useAuth()
   const cfg                         = useGitHubConfig()
   const logoUrl                     = useLogo(cfg)
   const { users, loading: ul, error: ue, reload: reloadUsers, save: saveUser, remove: removeUser } = useUsers(cfg)
-  const { displays, loading: dl, error: de, reload: reloadDisplays, save: saveDisplay } = useDisplays(cfg)
+  const { displays, loading: dl, error: de, reload: reloadDisplays } = useDisplays(cfg)
 
   const [section, setSection]           = useState<Section>('displays')
   const [activeDisplayId, setActiveDisplayId] = useState<string | null>(null)
@@ -65,11 +108,67 @@ export default function AdminPage() {
     }
   }, [cfg, reloadDisplays, toast])
 
-  // ── Display updated (slot assignment changed) ────────────
+  // ── Display updated (slot assignment / rename changed) ──────
 
   const handleDisplayUpdated = useCallback(async () => {
     await reloadDisplays()
   }, [reloadDisplays])
+
+  // ── Display deleted ──────────────────────────────────────
+
+  const handleDisplayDeleted = useCallback((deletedId: string) => {
+    // Move selection to another display (or null)
+    if (activeDisplayId === deletedId) {
+      const remaining = displays.filter((d) => d.data.id !== deletedId)
+      setActiveDisplayId(remaining.length > 0 ? remaining[0].data.id : null)
+    }
+    reloadDisplays()
+    toast.success('Display gelöscht.')
+  }, [activeDisplayId, displays, reloadDisplays, toast])
+
+  // ── Repo reset ───────────────────────────────────────────
+
+  const [resetting, setResetting] = useState(false)
+
+  const handleRepoReset = useCallback(async () => {
+    if (!cfg) return
+    const confirmed = confirm(
+      '⚠️ ALLE Nutzer, Displays und Bilder werden unwiderruflich gelöscht!\n' +
+      'Das Repo wird danach mit Standard-Daten neu initialisiert.\n\n' +
+      'Wirklich fortfahren?',
+    )
+    if (!confirmed) return
+    setResetting(true)
+    try {
+      await GH.resetDataRepo(cfg)
+      await Promise.all([reloadDisplays(), reloadUsers()])
+      setActiveDisplayId(null)
+      toast.success('Repo zurückgesetzt und neu initialisiert.')
+    } catch (err) {
+      toast.error(`Fehler beim Reset: ${(err as Error).message}`)
+    } finally {
+      setResetting(false)
+    }
+  }, [cfg, reloadDisplays, reloadUsers, toast])
+
+  // ── Auto-refresh when tab becomes visible again ──────────
+  // Ensures the admin shows fresh data after the user switches tabs
+  // or comes back from the display page.
+
+  const lastLoadRef = useRef(0)
+  useEffect(() => {
+    const handleVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      if (Date.now() - lastLoadRef.current < 15_000) return  // debounce 15 s
+      lastLoadRef.current = Date.now()
+      reloadDisplays()
+      reloadUsers()
+    }
+    document.addEventListener('visibilitychange', handleVisible)
+    return () => document.removeEventListener('visibilitychange', handleVisible)
+  }, [reloadDisplays, reloadUsers])
+
+  useEffect(() => { lastLoadRef.current = Date.now() }, [])
 
   // ── User saved ───────────────────────────────────────────
 
@@ -237,6 +336,7 @@ export default function AdminPage() {
             users={users}
             cfg={cfg}
             onUpdated={handleDisplayUpdated}
+            onDeleted={handleDisplayDeleted}
             basePath={runtimeCfg?.basePath ?? '/'}
           />
         )}
@@ -372,43 +472,14 @@ export default function AdminPage() {
               )}
 
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {users.map((u) => {
-                  const imageBaseUrl = `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch ?? 'main'}`
-                  return (
-                    <button
-                      key={u.data.id}
-                      onClick={() => setEditingUser(u)}
-                      className="group relative flex flex-col overflow-hidden rounded-2xl bg-surface-700 border border-white/10 hover:border-brand-500/40 transition-all aspect-[3/4]"
-                    >
-                      {u.data.image && (
-                        <>
-                          <div
-                            className="absolute inset-0 bg-cover"
-                            style={{
-                              backgroundImage: `url(${imageBaseUrl}/${u.data.image})`,
-                              backgroundPosition: `${u.data.imagePosition?.x ?? 50}% ${u.data.imagePosition?.y ?? 30}%`,
-                              backgroundSize: `${Math.round((u.data.imageScale ?? 1.15) * 100)}%`,
-                            }}
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/0" />
-                        </>
-                      )}
-                      <div className="flex-1" />
-                      <div className="relative z-10 px-3 pb-3">
-                        <p className="text-base font-bold text-white leading-tight"
-                          style={u.data.color ? { color: u.data.color } : {}}>
-                          {u.data.displayName}
-                        </p>
-                        {u.data.role && (
-                          <p className="text-xs text-white/40 mt-0.5 truncate">{u.data.role}</p>
-                        )}
-                      </div>
-                      <div className="absolute inset-0 bg-brand-600/0 group-hover:bg-brand-600/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <span className="bg-black/60 text-white text-xs font-semibold px-3 py-1.5 rounded-full">Bearbeiten</span>
-                      </div>
-                    </button>
-                  )
-                })}
+                {users.map((u) => (
+                  <UserCard
+                    key={u.data.id}
+                    user={u}
+                    cfg={cfg}
+                    onClick={() => setEditingUser(u)}
+                  />
+                ))}
               </div>
             </div>
           </div>
@@ -504,13 +575,37 @@ export default function AdminPage() {
                 </button>
               </div>
 
-              <div className="bg-surface-800 border border-red-500/20 rounded-2xl p-5">
-                <p className="text-sm font-semibold text-red-400/80 uppercase tracking-wider mb-3">Gefahrenbereich</p>
+              <div className="bg-surface-800 border border-red-500/20 rounded-2xl p-5 space-y-3">
+                <p className="text-sm font-semibold text-red-400/80 uppercase tracking-wider">Gefahrenbereich</p>
+
+                {/* Repo hard-reset */}
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/5 border border-red-500/20">
+                  <AlertTriangle className="w-5 h-5 text-red-400/70 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-white/70 font-medium mb-1">Repo zurücksetzen (Hard Reset)</p>
+                    <p className="text-xs text-white/35 mb-3">
+                      Löscht ALLE Nutzer, Displays und Bilder im privaten Daten-Repo und erstellt
+                      Standard-Daten neu. Nicht rückgängig zu machen.
+                    </p>
+                    <button
+                      onClick={handleRepoReset}
+                      disabled={resetting}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/15 border border-red-500/40 text-red-400 hover:bg-red-500/25 text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      {resetting
+                        ? <><div className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" /> Wird zurückgesetzt …</>
+                        : <><AlertTriangle className="w-3.5 h-3.5" /> Alles löschen & neu starten</>
+                      }
+                    </button>
+                  </div>
+                </div>
+
+                {/* Local config reset */}
                 <button
-                  onClick={() => { if (confirm('Konfiguration wirklich löschen?')) { clearConfig(); window.location.reload() } }}
+                  onClick={() => { if (confirm('Lokale Konfiguration (Token, Repo) wirklich löschen?')) { clearConfig(); window.location.reload() } }}
                   className="px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 text-sm font-medium transition-colors"
                 >
-                  Konfiguration zurücksetzen
+                  Lokale Konfiguration zurücksetzen
                 </button>
               </div>
             </div>

@@ -115,7 +115,14 @@ export function useDisplays(cfg: GitHubConfig | null) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cfgKey, load])
 
-  return { displays, loading, error, reload: load, save }
+  const remove = useCallback(async (id: string, sha: string): Promise<void> => {
+    if (!cfg) throw new Error('Nicht konfiguriert')
+    await GH.deleteDisplay(cfg, id, sha)
+    setDisplays((prev) => prev.filter((d) => d.data.id !== id))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cfgKey])
+
+  return { displays, loading, error, reload: load, save, remove }
 }
 
 export function useSettings(cfg: GitHubConfig | null) {

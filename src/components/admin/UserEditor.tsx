@@ -16,6 +16,8 @@ import {
   positionToCss,
   scaleToCss,
 } from '../../lib/imageUtils'
+import { invalidateAuthImage } from '../../lib/imageCache'
+import { useAuthImage } from '../../hooks/useAuthImage'
 
 interface Props {
   existing?: RemoteData<User>
@@ -187,10 +189,9 @@ export default function UserEditor({ existing, cfg, onSaved, onDeleted, onCancel
   const [showPreview, setShowPreview]   = useState(false)
   const fileRef                         = useRef<HTMLInputElement>(null)
 
-  const imgSrc = previewImg
-    ?? (form.image
-      ? GH.imageUrl(cfg, form.image)
-      : null)
+  // Auth image URL for an already-saved image (works for private repos via authenticated API)
+  const savedImgUrl = useAuthImage(form.image ? cfg : null, form.image ?? null)
+  const imgSrc = previewImg ?? savedImgUrl ?? null
 
   // ── Image upload ─────────────────────────────────────────
 
@@ -205,10 +206,16 @@ export default function UserEditor({ existing, cfg, onSaved, onDeleted, onCancel
       const { base64 } = await fileToWebP(file, 900, 0.85)
       const path = generateImageFilename(form.id)
 
-      // Upload to GitHub
-      await GH.uploadBinary(cfg, path, base64, undefined, `chore: upload image for ${form.displayName}`)
+      // If the file already exists we must pass its current SHA to avoid a 422 error
+      const existingSha = await GH.getFileSha(cfg, path) ?? undefined
 
-      // Show local preview
+      // Upload to GitHub (create or replace)
+      await GH.uploadBinary(cfg, path, base64, existingSha, `chore: upload image for ${form.displayName}`)
+
+      // Bust the image cache so the new version is shown everywhere
+      invalidateAuthImage(cfg, path)
+
+      // Show local preview immediately (no need to wait for the CDN)
       setPreviewImg(`data:image/webp;base64,${base64}`)
       setForm((prev) => ({ ...prev, image: path }))
     } catch (err) {

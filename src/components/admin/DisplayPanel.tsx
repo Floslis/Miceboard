@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Plus, ExternalLink, RefreshCw, Pencil, Trash2, Check, X } from 'lucide-react'
 import clsx from 'clsx'
 import type { Display, Slot, User, RemoteData } from '../../types'
@@ -8,38 +8,40 @@ import SlotAssignment from './SlotAssignment'
 
 interface Props {
   displayData: RemoteData<Display>
-  users: RemoteData<User>[]
-  cfg: GitHubConfig
-  onUpdated: () => void
-  basePath?: string
+  users:       RemoteData<User>[]
+  cfg:         GitHubConfig
+  onUpdated:   () => Promise<void>
+  onDeleted?:  (id: string) => void   // called after display is deleted
+  basePath?:   string
 }
 
 function generateSlotId(): string {
   return 'slot-' + Date.now().toString(36)
 }
 
-// ── Inline slot name editor ───────────────────────────────────
+// ── Inline text editor ────────────────────────────────────────
 
-function SlotNameEditor({
-  slot, onSave, onCancel,
-}: { slot: Slot; onSave: (name: string) => void; onCancel: () => void }) {
-  const [name, setName] = useState(slot.name)
+function InlineEditor({
+  value, onSave, onCancel, placeholder,
+}: { value: string; onSave: (v: string) => void; onCancel: () => void; placeholder?: string }) {
+  const [text, setText] = useState(value)
   return (
-    <div className="flex items-center gap-1 w-full" onClick={(e) => e.stopPropagation()}>
+    <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
       <input
         autoFocus
-        value={name}
-        onChange={(e) => setName(e.target.value)}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={placeholder}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') onSave(name.trim() || slot.name)
+          if (e.key === 'Enter')  onSave(text.trim() || value)
           if (e.key === 'Escape') onCancel()
         }}
-        className="flex-1 text-xs bg-surface-600 border border-brand-500/60 rounded-lg px-2 py-1 text-white outline-none"
+        className="flex-1 text-sm bg-surface-600 border border-brand-500/60 rounded-lg px-3 py-1.5 text-white outline-none"
       />
-      <button onClick={() => onSave(name.trim() || slot.name)}
-        className="p-1 text-green-400 hover:text-green-300"><Check className="w-3.5 h-3.5" /></button>
+      <button onClick={() => onSave(text.trim() || value)}
+        className="p-1.5 text-green-400 hover:text-green-300"><Check className="w-3.5 h-3.5" /></button>
       <button onClick={onCancel}
-        className="p-1 text-white/40 hover:text-white/70"><X className="w-3.5 h-3.5" /></button>
+        className="p-1.5 text-white/40 hover:text-white/70"><X className="w-3.5 h-3.5" /></button>
     </div>
   )
 }
@@ -47,22 +49,30 @@ function SlotNameEditor({
 // ── Main component ────────────────────────────────────────────
 
 export default function DisplayPanel({
-  displayData, users, cfg, onUpdated, basePath = '/',
+  displayData, users, cfg, onUpdated, onDeleted, basePath = '/',
 }: Props) {
-  const display = displayData.data
-  const [savingSlot, setSavingSlot]   = useState<string | null>(null)
-  const [editingSlot, setEditingSlot] = useState<string | null>(null)
-  const [refreshing, setRefreshing]   = useState(false)
+  const display     = displayData.data
+  const sortedSlots = display.slots.slice().sort((a, b) => a.order - b.order)
 
-  const imageBaseUrl = `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch ?? 'main'}`
-  const sortedSlots  = display.slots.slice().sort((a, b) => a.order - b.order)
+  const [savingSlot, setSavingSlot]               = useState<string | null>(null)
+  const [editingSlot, setEditingSlot]             = useState<string | null>(null)
+  const [editingDisplayName, setEditingDisplayName] = useState(false)
+  const [refreshing, setRefreshing]               = useState(false)
+  const [deleting, setDeleting]                   = useState(false)
 
-  // ── Helpers ──────────────────────────────────────────────
+  // ── SHA ref: always track the latest SHA ──────────────────
+  // The prop updates async (after reload). The ref updates immediately
+  // after a successful save, so rapid successive saves don't get a 409.
+  const displayShaRef = useRef(displayData.sha)
+  useEffect(() => { displayShaRef.current = displayData.sha }, [displayData.sha])
+
+  // ── Core save helper ──────────────────────────────────────
 
   const saveDisplay = useCallback(async (updated: Display) => {
-    await GH.saveDisplay(cfg, updated, displayData.sha)
-    onUpdated()
-  }, [cfg, displayData.sha, onUpdated])
+    const newSha = await GH.saveDisplay(cfg, updated, displayShaRef.current)
+    displayShaRef.current = newSha  // update immediately so the next save uses the right SHA
+    await onUpdated()               // then reload for full consistency
+  }, [cfg, onUpdated])
 
   // ── Slot assignment ──────────────────────────────────────
 
@@ -74,7 +84,7 @@ export default function DisplayPanel({
         slots: display.slots.map((s) => s.id === slotId ? { ...s, userId } : s),
       })
     } catch (err) {
-      alert(`Fehler: ${(err as Error).message}`)
+      alert(`Fehler beim Zuweisen: ${(err as Error).message}`)
     } finally {
       setSavingSlot(null)
     }
@@ -82,7 +92,7 @@ export default function DisplayPanel({
 
   // ── Slot rename ───────────────────────────────────────────
 
-  const handleRename = useCallback(async (slotId: string, newName: string) => {
+  const handleRenameSlot = useCallback(async (slotId: string, newName: string) => {
     setEditingSlot(null)
     setSavingSlot(slotId)
     try {
@@ -91,7 +101,7 @@ export default function DisplayPanel({
         slots: display.slots.map((s) => s.id === slotId ? { ...s, name: newName } : s),
       })
     } catch (err) {
-      alert(`Fehler: ${(err as Error).message}`)
+      alert(`Fehler beim Umbenennen: ${(err as Error).message}`)
     } finally {
       setSavingSlot(null)
     }
@@ -108,7 +118,7 @@ export default function DisplayPanel({
         slots: display.slots.filter((s) => s.id !== slotId),
       })
     } catch (err) {
-      alert(`Fehler: ${(err as Error).message}`)
+      alert(`Fehler beim Löschen: ${(err as Error).message}`)
     } finally {
       setSavingSlot(null)
     }
@@ -120,7 +130,36 @@ export default function DisplayPanel({
     const name = prompt('Slot-Name (z. B. Prediger, Vox 1):')
     if (!name?.trim()) return
     const newSlot: Slot = { id: generateSlotId(), name: name.trim(), order: display.slots.length }
-    await saveDisplay({ ...display, slots: [...display.slots, newSlot] })
+    try {
+      await saveDisplay({ ...display, slots: [...display.slots, newSlot] })
+    } catch (err) {
+      alert(`Fehler: ${(err as Error).message}`)
+    }
+  }
+
+  // ── Display rename ────────────────────────────────────────
+
+  const handleRenameDisplay = async (newName: string) => {
+    setEditingDisplayName(false)
+    try {
+      await saveDisplay({ ...display, name: newName })
+    } catch (err) {
+      alert(`Fehler beim Umbenennen: ${(err as Error).message}`)
+    }
+  }
+
+  // ── Display delete ────────────────────────────────────────
+
+  const handleDeleteDisplay = async () => {
+    if (!confirm(`Display „${display.name}" wirklich löschen?\nAlle Slots und Zuweisungen gehen verloren.`)) return
+    setDeleting(true)
+    try {
+      await GH.deleteDisplay(cfg, display.id, displayShaRef.current)
+      onDeleted?.(display.id)
+    } catch (err) {
+      alert(`Fehler beim Löschen: ${(err as Error).message}`)
+      setDeleting(false)
+    }
   }
 
   // ── Refresh ───────────────────────────────────────────────
@@ -135,12 +174,33 @@ export default function DisplayPanel({
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 shrink-0">
-        <div>
-          <h2 className="text-lg font-bold text-white">{display.name}</h2>
-          {display.description && <p className="text-sm text-white/40">{display.description}</p>}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 shrink-0 gap-3">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          {editingDisplayName ? (
+            <InlineEditor
+              value={display.name}
+              placeholder="Display-Name"
+              onSave={handleRenameDisplay}
+              onCancel={() => setEditingDisplayName(false)}
+            />
+          ) : (
+            <>
+              <h2 className="text-lg font-bold text-white truncate">{display.name}</h2>
+              {display.description && (
+                <p className="text-sm text-white/40 truncate hidden sm:block">{display.description}</p>
+              )}
+              <button
+                onClick={() => setEditingDisplayName(true)}
+                className="p-1 rounded text-white/25 hover:text-white/70 hover:bg-white/5 transition-colors shrink-0"
+                title="Display umbenennen"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-1.5 shrink-0">
           <button onClick={refresh} disabled={refreshing}
             className="p-2 rounded-lg bg-surface-700 text-white/50 hover:bg-surface-600 hover:text-white transition-colors disabled:opacity-40"
             title="Aktualisieren">
@@ -155,6 +215,17 @@ export default function DisplayPanel({
             className="flex items-center gap-2 px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm transition-colors">
             <Plus className="w-4 h-4" />
             Slot
+          </button>
+          <button
+            onClick={handleDeleteDisplay}
+            disabled={deleting}
+            className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400/80 hover:bg-red-500/20 hover:text-red-400 transition-colors disabled:opacity-40"
+            title="Display löschen"
+          >
+            {deleting
+              ? <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+              : <Trash2 className="w-4 h-4" />
+            }
           </button>
         </div>
       </div>
@@ -178,9 +249,9 @@ export default function DisplayPanel({
                 {/* Slot label row – name + edit/delete */}
                 <div className="flex items-center gap-1 min-h-[24px]">
                   {editingSlot === slot.id ? (
-                    <SlotNameEditor
-                      slot={slot}
-                      onSave={(name) => handleRename(slot.id, name)}
+                    <InlineEditor
+                      value={slot.name}
+                      onSave={(name) => handleRenameSlot(slot.id, name)}
                       onCancel={() => setEditingSlot(null)}
                     />
                   ) : (
@@ -206,12 +277,12 @@ export default function DisplayPanel({
                   )}
                 </div>
 
-                {/* Assignment tile – fixed height, not aspect ratio */}
+                {/* Assignment tile – fixed height */}
                 <div className="h-44">
                   <SlotAssignment
                     slot={slot}
                     users={users}
-                    imageBaseUrl={imageBaseUrl}
+                    cfg={cfg}
                     onAssign={handleAssign}
                     saving={savingSlot === slot.id}
                   />
