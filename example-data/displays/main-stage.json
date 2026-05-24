@@ -1,0 +1,42 @@
+{
+  "id": "main-stage",
+  "name": "Hauptbühne",
+  "description": "Hauptbühne mit allen Slots",
+  "layout": "grid",
+  "slots": [
+    {
+      "id": "slot-prediger",
+      "name": "Prediger",
+      "userId": "user-1",
+      "order": 0
+    },
+    {
+      "id": "slot-moderator",
+      "name": "Moderator",
+      "userId": "user-2",
+      "order": 1
+    },
+    {
+      "id": "slot-worship",
+      "name": "Worship Lead",
+      "userId": "user-3",
+      "order": 2
+    },
+    {
+      "id": "slot-vox1",
+      "name": "Vox 1",
+      "order": 3
+    },
+    {
+      "id": "slot-vox2",
+      "name": "Vox 2",
+      "order": 4
+    },
+    {
+      "id": "slot-gitarre",
+      "name": "Gitarre",
+      "order": 5
+    }
+  ],
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}

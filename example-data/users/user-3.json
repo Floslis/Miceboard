@@ -1,0 +1,13 @@
+{
+  "id": "user-3",
+  "displayName": "Jonas",
+  "fullName": "Jonas Weber",
+  "role": "Worship",
+  "color": "#10b981",
+  "tags": ["worship", "gitarre"],
+  "active": true,
+  "imagePosition": { "x": 50, "y": 30 },
+  "imageScale": 1.15,
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}

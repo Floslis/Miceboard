@@ -1,0 +1,13 @@
+{
+  "id": "user-2",
+  "displayName": "Anna",
+  "fullName": "Anna Schmidt",
+  "role": "Moderatorin",
+  "color": "#ec4899",
+  "tags": ["moderation"],
+  "active": true,
+  "imagePosition": { "x": 50, "y": 20 },
+  "imageScale": 1.1,
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}

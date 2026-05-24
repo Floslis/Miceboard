@@ -1,0 +1,13 @@
+{
+  "id": "user-1",
+  "displayName": "Max",
+  "fullName": "Max Mustermann",
+  "role": "Prediger",
+  "color": "#6366f1",
+  "tags": ["worship", "predigt"],
+  "active": true,
+  "imagePosition": { "x": 50, "y": 25 },
+  "imageScale": 1.2,
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}

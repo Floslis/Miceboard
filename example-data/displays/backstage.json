@@ -1,0 +1,29 @@
+{
+  "id": "backstage",
+  "name": "Backstage",
+  "description": "Monitor für Backstage / Garderobe",
+  "layout": "grid",
+  "slots": [
+    {
+      "id": "bs-slot-1",
+      "name": "Prediger",
+      "order": 0
+    },
+    {
+      "id": "bs-slot-2",
+      "name": "Gitarre",
+      "order": 1
+    },
+    {
+      "id": "bs-slot-3",
+      "name": "Piano",
+      "order": 2
+    },
+    {
+      "id": "bs-slot-4",
+      "name": "Drums",
+      "order": 3
+    }
+  ],
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}
