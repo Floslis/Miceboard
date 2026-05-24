@@ -41,7 +41,13 @@ export async function getFile<T>(
   }
   const file: GitHubFile = await res.json()
   if (!file.content) throw new Error(`File ${path} has no content`)
-  const decoded = JSON.parse(atob(file.content.replace(/\n/g, ''))) as T
+
+  // atob() returns a binary string; special chars (ü, ä, ö …) are stored
+  // as raw UTF-8 bytes.  We must reverse the unescape(encodeURIComponent())
+  // encoding used in putFile to get a proper JS string before JSON.parse.
+  const binaryStr = atob(file.content.replace(/\n/g, ''))
+  const text = decodeURIComponent(escape(binaryStr))
+  const decoded = JSON.parse(text) as T
   return { data: decoded, sha: file.sha, path }
 }
 

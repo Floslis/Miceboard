@@ -59,14 +59,14 @@ export default function SlotAssignment({ slot, users, imageBaseUrl, onAssign, sa
   }
 
   return (
-    <div className="relative" ref={panelRef}>
+    <div className="relative h-full" ref={panelRef}>
       {/* Slot tile – always visible */}
       <button
         onClick={() => !saving && setOpen((p) => !p)}
         disabled={saving}
         className={clsx(
-          'relative flex flex-col overflow-hidden rounded-2xl border transition-all w-full',
-          'aspect-[3/4] group',
+          'relative flex flex-col overflow-hidden rounded-2xl border transition-all w-full h-full',
+          'group',
           open
             ? 'border-brand-500/60 ring-1 ring-brand-500/30'
             : 'border-white/10 hover:border-white/25',

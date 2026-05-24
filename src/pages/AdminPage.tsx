@@ -6,7 +6,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Mic, Users, Monitor, Settings, LogOut, Plus, RefreshCw,
-  ChevronRight, Upload, X
+  Upload, X, LayoutDashboard, ChevronRight
 } from 'lucide-react'
 import clsx from 'clsx'
 import type { User, Display, RemoteData } from '../types'
@@ -21,7 +21,7 @@ import UserEditor from '../components/admin/UserEditor'
 import ToastContainer, { useToasts } from '../components/common/Toast'
 import LoadingSpinner from '../components/common/LoadingSpinner'
 
-type Section = 'displays' | 'users' | 'settings'
+type Section = 'overview' | 'displays' | 'users' | 'settings'
 
 export default function AdminPage() {
   const { logout }                  = useAuth()
@@ -195,8 +195,9 @@ export default function AdminPage() {
 
           {/* Other sections */}
           {([
-            { id: 'users' as Section,   icon: Users,    label: 'Nutzer' },
-            { id: 'settings' as Section, icon: Settings, label: 'Einstellungen' },
+            { id: 'overview'  as Section, icon: LayoutDashboard, label: 'Übersicht' },
+            { id: 'users'     as Section, icon: Users,           label: 'Nutzer' },
+            { id: 'settings'  as Section, icon: Settings,        label: 'Einstellungen' },
           ] as const).map(({ id, icon: Icon, label }) => (
             <button
               key={id}
@@ -236,7 +237,6 @@ export default function AdminPage() {
             users={users}
             cfg={cfg}
             onUpdated={handleDisplayUpdated}
-            onEditDisplay={() => {/* TODO: display config modal */}}
             basePath={runtimeCfg?.basePath ?? '/'}
           />
         )}
@@ -259,6 +259,81 @@ export default function AdminPage() {
                 </button>
               </>
             )}
+          </div>
+        )}
+
+        {/* ── Overview section ───────────────────────────── */}
+        {section === 'overview' && (
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-white">Gesamtübersicht</h2>
+              <button onClick={() => { reloadDisplays(); reloadUsers() }} disabled={dl || ul}
+                className="p-2 rounded-lg bg-surface-700 text-white/50 hover:bg-surface-600 transition-colors">
+                <RefreshCw className={clsx('w-4 h-4', (dl || ul) && 'animate-spin')} />
+              </button>
+            </div>
+            {(dl || ul) && <LoadingSpinner label="Lädt …" className="mt-12" />}
+            <div className="space-y-6">
+              {displays.map((d) => {
+                const imageBaseUrl = `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch ?? 'main'}`
+                const sorted = d.data.slots.slice().sort((a, b) => a.order - b.order)
+                const url = `${runtimeCfg?.basePath ?? '/'}display/${d.data.id}`
+                return (
+                  <div key={d.data.id} className="bg-surface-800 border border-white/10 rounded-2xl overflow-hidden">
+                    {/* Display header */}
+                    <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
+                      <div className="flex items-center gap-2">
+                        <Monitor className="w-4 h-4 text-white/40" />
+                        <span className="font-semibold text-white">{d.data.name}</span>
+                        <span className="text-white/30 text-xs">{sorted.length} Slots</span>
+                      </div>
+                      <a href={url} target="_blank" rel="noreferrer"
+                        className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
+                        öffnen ↗
+                      </a>
+                    </div>
+                    {/* Slot rows */}
+                    <div className="divide-y divide-white/5">
+                      {sorted.length === 0 && (
+                        <p className="px-5 py-4 text-white/25 text-sm">Keine Slots</p>
+                      )}
+                      {sorted.map((slot) => {
+                        const user = slot.userId ? users.find((u) => u.data.id === slot.userId)?.data : null
+                        return (
+                          <div key={slot.id} className="flex items-center gap-4 px-5 py-3">
+                            {/* Avatar */}
+                            <div className="w-9 h-9 rounded-full overflow-hidden bg-surface-700 shrink-0 border border-white/10">
+                              {user?.image ? (
+                                <img src={`${imageBaseUrl}/${user.image}`} alt="" className="w-full h-full object-cover"
+                                  style={{ objectPosition: `${user.imagePosition?.x ?? 50}% ${user.imagePosition?.y ?? 30}%` }} />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-white/20 text-xs">
+                                  {user ? user.displayName.charAt(0).toUpperCase() : '—'}
+                                </div>
+                              )}
+                            </div>
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-white/80 font-medium"
+                                style={user?.color ? { color: user.color } : {}}>
+                                {user?.displayName ?? <span className="text-white/25">Niemand</span>}
+                              </p>
+                              {user?.fullName && user.fullName !== user.displayName && (
+                                <p className="text-xs text-white/35 truncate">{user.fullName}</p>
+                              )}
+                            </div>
+                            {/* Slot badge */}
+                            <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-white/40 bg-surface-700 px-2.5 py-1 rounded-full border border-white/10">
+                              {slot.name}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 
