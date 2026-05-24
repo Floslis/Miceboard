@@ -4,7 +4,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useState, useRef, useCallback } from 'react'
-import { Upload, X, Save, Trash2, Eye } from 'lucide-react'
+import { Upload, X, Save, Trash2, Eye, RefreshCw } from 'lucide-react'
 import clsx from 'clsx'
 import type { User, RemoteData } from '../../types'
 import type { GitHubConfig } from '../../lib/github'
@@ -27,6 +27,145 @@ interface Props {
 
 function generateId(): string {
   return 'user-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+}
+
+// ── Color palettes ────────────────────────────────────────────
+
+const PALETTES = {
+  Pastell: ['#f0abfc','#a5b4fc','#86efac','#fcd34d','#fb923c','#f9a8d4','#7dd3fc','#6ee7b7','#c4b5fd','#fdba74'],
+  Kräftig: ['#ec4899','#6366f1','#10b981','#f59e0b','#ef4444','#3b82f6','#8b5cf6','#14b8a6','#f97316','#84cc16'],
+  Neutral: ['#ffffff','#e2e8f0','#94a3b8','#64748b','#475569','#334155','#1e293b','#f1f5f9','#cbd5e1','#e7e5e4'],
+} as const
+
+type PaletteName = keyof typeof PALETTES
+
+function ColorPicker({ value, onChange }: { value?: string; onChange: (c: string | undefined) => void }) {
+  const [palette, setPalette] = useState<PaletteName>('Kräftig')
+  const colors = PALETTES[palette]
+
+  const cycle = () => {
+    const idx = (colors as readonly string[]).indexOf(value ?? '')
+    const next = colors[(idx + 1) % colors.length]
+    onChange(next)
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wider text-white/50">
+          Akzentfarbe
+        </span>
+        <div className="flex items-center gap-1">
+          {(Object.keys(PALETTES) as PaletteName[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPalette(p)}
+              className={clsx(
+                'px-2.5 py-1 rounded-lg text-xs font-medium transition-colors',
+                palette === p
+                  ? 'bg-brand-600 text-white'
+                  : 'bg-surface-600 text-white/50 hover:text-white hover:bg-surface-500',
+              )}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Swatch grid */}
+      <div className="flex flex-wrap gap-2">
+        {colors.map((c) => (
+          <button
+            key={c}
+            onClick={() => onChange(value === c ? undefined : c)}
+            title={c}
+            className={clsx(
+              'w-7 h-7 rounded-lg transition-all',
+              value === c
+                ? 'ring-2 ring-white ring-offset-2 ring-offset-surface-800 scale-110'
+                : 'hover:scale-110',
+            )}
+            style={{ background: c }}
+          />
+        ))}
+      </div>
+
+      {/* Row: color input + hex + cycle + clear */}
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={value ?? '#6366f1'}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-9 h-9 rounded-lg cursor-pointer border-0 bg-transparent p-0.5 shrink-0"
+        />
+        <input
+          type="text"
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value || undefined)}
+          placeholder="z. B. #6366f1"
+          className="flex-1 bg-surface-700 border border-white/10 rounded-xl px-3 py-2 text-white placeholder-white/25 font-mono text-xs focus:outline-none focus:border-brand-500 transition-colors"
+        />
+        <button
+          onClick={cycle}
+          title="Nächste Farbe"
+          className="p-2 rounded-lg bg-surface-700 text-white/50 hover:text-white hover:bg-surface-600 transition-colors"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+        </button>
+        {value && (
+          <button
+            onClick={() => onChange(undefined)}
+            title="Farbe entfernen"
+            className="p-2 rounded-lg bg-surface-700 text-white/40 hover:text-white/70 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Toggle ────────────────────────────────────────────────────
+
+function Toggle({
+  label, description, checked, onChange,
+}: {
+  label: string
+  description?: string
+  checked: boolean
+  onChange: (v: boolean) => void
+}) {
+  return (
+    <div
+      className="flex items-center justify-between gap-4 cursor-pointer"
+      onClick={() => onChange(!checked)}
+    >
+      <div>
+        <p className="text-sm text-white/80 font-medium select-none">{label}</p>
+        {description && <p className="text-xs text-white/35 mt-0.5 select-none">{description}</p>}
+      </div>
+
+      {/* Track */}
+      <div
+        className={clsx(
+          'relative shrink-0 rounded-full transition-colors duration-200',
+          'w-12 h-6',
+          checked ? 'bg-brand-600' : 'bg-surface-500',
+        )}
+      >
+        {/* Thumb */}
+        <span
+          className={clsx(
+            'absolute top-0.5 bottom-0.5 w-5 rounded-full bg-white shadow-md',
+            'transition-transform duration-200',
+            checked ? 'translate-x-6' : 'translate-x-0.5',
+          )}
+        />
+      </div>
+    </div>
+  )
 }
 
 export default function UserEditor({ existing, cfg, onSaved, onDeleted, onCancel }: Props) {
@@ -202,32 +341,10 @@ export default function UserEditor({ existing, cfg, onSaved, onDeleted, onCancel
           </div>
 
           {/* Accent Color */}
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-1.5 block">
-              Akzentfarbe (optional)
-            </span>
-            <div className="flex items-center gap-3">
-              <input
-                type="color"
-                value={form.color ?? '#6366f1'}
-                onChange={(e) => setForm((p) => ({ ...p, color: e.target.value }))}
-                className="w-12 h-12 rounded-xl cursor-pointer border-0 bg-transparent p-0.5"
-              />
-              <input
-                type="text"
-                value={form.color ?? ''}
-                onChange={(e) => setForm((p) => ({ ...p, color: e.target.value }))}
-                placeholder="#6366f1"
-                className="flex-1 bg-surface-700 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 font-mono text-sm focus:outline-none focus:border-brand-500 transition-colors"
-              />
-              {form.color && (
-                <button onClick={() => setForm((p) => ({ ...p, color: undefined }))}
-                  className="p-2.5 rounded-xl bg-surface-700 text-white/40 hover:text-white/70 transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
+          <ColorPicker
+            value={form.color}
+            onChange={(c) => setForm((p) => ({ ...p, color: c }))}
+          />
 
           {/* Image upload */}
           <div>
@@ -319,24 +436,12 @@ export default function UserEditor({ existing, cfg, onSaved, onDeleted, onCancel
           )}
 
           {/* Active toggle */}
-          <label className="flex items-center justify-between cursor-pointer group">
-            <span className="text-sm text-white/70 group-hover:text-white transition-colors">Aktiv / verfügbar</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={form.active !== false}
-              onClick={() => setForm((p) => ({ ...p, active: !p.active }))}
-              className={clsx(
-                'relative w-11 h-6 rounded-full transition-colors',
-                form.active !== false ? 'bg-brand-600' : 'bg-surface-500',
-              )}
-            >
-              <span className={clsx(
-                'absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform',
-                form.active !== false ? 'translate-x-5' : 'translate-x-0.5',
-              )} />
-            </button>
-          </label>
+          <Toggle
+            label="Aktiv / verfügbar"
+            description="Person wird in der Zuweisung angezeigt"
+            checked={form.active !== false}
+            onChange={(v) => setForm((p) => ({ ...p, active: v }))}
+          />
         </div>
 
         {/* Live preview panel */}

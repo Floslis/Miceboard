@@ -38,6 +38,8 @@ export interface Display {
   slots: Slot[]
   layout?: DisplayLayout   // How slots are arranged
   theme?: DisplayTheme
+  slotWidth?: number       // Fixed slot width in px; undefined = auto (equal columns)
+  slotGap?: number         // Gap between slots in px; default 12
   updatedAt?: string
 }
 
