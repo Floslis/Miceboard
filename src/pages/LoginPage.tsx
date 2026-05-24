@@ -1,17 +1,21 @@
 import { useState, FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Lock, Mic } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
 export default function LoginPage() {
   const { login, error, clearError } = useAuth()
-  const [password, setPassword]     = useState('')
-  const [shaking, setShaking]       = useState(false)
+  const navigate                     = useNavigate()
+  const [password, setPassword]      = useState('')
+  const [shaking, setShaking]        = useState(false)
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     clearError()
     const ok = login(password)
-    if (!ok) {
+    if (ok) {
+      navigate('/admin', { replace: true })
+    } else {
       setShaking(true)
       setTimeout(() => setShaking(false), 500)
       setPassword('')
@@ -20,13 +24,11 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface-900 px-4">
-      {/* Background glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand-600/10 rounded-full blur-3xl" />
       </div>
 
       <div className={`relative z-10 w-full max-w-sm ${shaking ? 'animate-[shake_0.4s_ease-in-out]' : ''}`}>
-        {/* Logo */}
         <div className="flex flex-col items-center mb-10">
           <div className="w-16 h-16 rounded-2xl bg-brand-600/20 border border-brand-500/30 flex items-center justify-center mb-4">
             <Mic className="w-8 h-8 text-brand-400" />

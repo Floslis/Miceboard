@@ -10,9 +10,8 @@ import DisplayPage from './pages/DisplayPage'
 
 function AdminRoute() {
   const { isAuthenticated } = useAuth()
-
   if (!isConfigured()) return <Navigate to="/setup" replace />
-  if (!isAuthenticated) return <LoginPage />
+  if (!isAuthenticated) return <Navigate to="/login" replace />
   return <AdminPage />
 }
 
@@ -30,7 +29,10 @@ export default function App() {
           element={<SetupPage onDone={() => { window.location.href = '/admin' }} />}
         />
 
-        {/* Display pages – publicly accessible */}
+        {/* Login page */}
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Display pages – publicly accessible, no auth */}
         <Route path="/display/:displayId" element={<DisplayPage />} />
 
         {/* Admin panel – protected */}
@@ -47,10 +49,7 @@ export default function App() {
         />
 
         {/* Catch-all */}
-        <Route
-          path="*"
-          element={<Navigate to="/" replace />}
-        />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )

@@ -4,13 +4,14 @@
   <meta charset="utf-8">
   <title>MicBoard</title>
   <!--
-    GitHub Pages SPA redirect hack.
-    Saves the full URL as a query string and redirects to the root,
-    which then restores it via the redirect script below.
-    See https://github.com/rafgraph/spa-github-pages
+    GitHub Pages SPA redirect.
+    pathSegmentsToKeep = 1 because the app lives at /Miceboard/
+    (one path segment deep from the root).
+    This redirects e.g. /Miceboard/admin → /Miceboard/?/admin
+    so the index.html at /Miceboard/ can restore the real URL.
   -->
   <script>
-    var pathSegmentsToKeep = 0;
+    var pathSegmentsToKeep = 1;
     var l = window.location;
     l.replace(
       l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
