@@ -392,6 +392,23 @@ export async function resetDataRepo(cfg: GitHubConfig): Promise<InitResult> {
     if (sha) await deleteFile(cfg, 'config/settings.json', sha, 'chore: reset – delete settings')
   } catch { /* file didn't exist */ }
 
-  // Re-create defaults
-  return initializeDataRepo(cfg)
+  // Re-create only the bare folder structure – no display, no slots.
+  // The user can add displays and slots themselves after a fresh start.
+  const created: string[] = []
+  const skipped: string[] = []
+
+  const ensure = async <T>(path: string, data: T, message: string) => {
+    const exists = await fileExists(cfg, path)
+    if (exists) { skipped.push(path) } else { await putFile(cfg, path, data, undefined, message); created.push(path) }
+  }
+
+  await ensure('config/settings.json', {
+    pollInterval: 8000, theme: 'dark', appTitle: 'MicBoard',
+    showClock: true, animateTransitions: true, defaultLayout: 'grid',
+    updatedAt: new Date().toISOString(),
+  }, 'chore: reset – init settings')
+
+  await ensure('images/.gitkeep', {}, 'chore: reset – init images folder')
+
+  return { created, skipped }
 }

@@ -230,7 +230,7 @@ export default function DisplayPanel({
         </div>
       </div>
 
-      {/* Slot grid */}
+      {/* Slot row – always one row, scrolls horizontally if there are many slots */}
       <div className="flex-1 overflow-y-auto p-5">
         {sortedSlots.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 gap-4 border-2 border-dashed border-white/10 rounded-2xl">
@@ -242,10 +242,9 @@ export default function DisplayPanel({
             </button>
           </div>
         ) : (
-          <div className="grid gap-3"
-            style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
+          <div className="flex gap-3 overflow-x-auto pb-1">
             {sortedSlots.map((slot) => (
-              <div key={slot.id} className="flex flex-col gap-1.5">
+              <div key={slot.id} className="flex flex-col gap-1.5 flex-1" style={{ minWidth: 130 }}>
                 {/* Slot label row – name + edit/delete */}
                 <div className="flex items-center gap-1 min-h-[24px]">
                   {editingSlot === slot.id ? (
@@ -291,7 +290,7 @@ export default function DisplayPanel({
             ))}
 
             {/* Add slot tile */}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5 flex-1" style={{ minWidth: 130 }}>
               <div className="min-h-[24px]" />
               <button
                 onClick={addSlot}

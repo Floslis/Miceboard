@@ -35,8 +35,6 @@ export default function DisplayView({ displayId, cfg, showClock = true, pollInte
   // Track previous SHA so we skip re-renders when nothing changed
   const prevShаRef = useRef<string>('')
 
-  const imageBaseUrl = `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch ?? 'main'}`
-
   const poll = useCallback(async () => {
     const [displayData, usersData] = await Promise.all([
       GH.getDisplay(cfg, displayId),
@@ -133,7 +131,7 @@ export default function DisplayView({ displayId, cfg, showClock = true, pollInte
               key={slot.id}
               slot={slot}
               user={slot.userId ? users.get(slot.userId) : undefined}
-              imageBaseUrl={imageBaseUrl}
+              cfg={cfg}
             />
           ))}
         </div>

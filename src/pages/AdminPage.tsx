@@ -6,7 +6,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Mic, Users, Monitor, Settings, LogOut, Plus, RefreshCw,
-  Upload, X, LayoutDashboard, ChevronRight, AlertTriangle
+  Upload, X, LayoutDashboard, ChevronRight, AlertTriangle,
+  LayoutGrid, List as ListIcon, ExternalLink,
 } from 'lucide-react'
 import clsx from 'clsx'
 import type { User, Display, RemoteData } from '../types'
@@ -66,6 +67,144 @@ function UserCard({
   )
 }
 
+// ── Overview card – one display with tile OR list view ─────────
+// Handles its own slot-assignment saves (SHA ref pattern).
+
+function OverviewAvatar({ user, cfg }: { user: User; cfg: GitHubConfig }) {
+  const raw = user.image
+    ? `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch ?? 'main'}/${user.image}`
+    : null
+  const [src, setSrc] = useState<string | null>(raw)
+  const handleError = async () => {
+    if (!user.image) return
+    const { getAuthImageUrl } = await import('../lib/imageCache')
+    const url = await getAuthImageUrl(cfg, user.image)
+    if (url) setSrc(url)
+  }
+  if (!src) return (
+    <div className="w-full h-full flex items-center justify-center text-white/30 text-xs font-bold"
+      style={user.color ? { color: user.color } : {}}>
+      {user.displayName.charAt(0).toUpperCase()}
+    </div>
+  )
+  return (
+    <img src={src} alt={user.displayName} className="w-full h-full object-cover"
+      style={{ objectPosition: `${user.imagePosition?.x ?? 50}% ${user.imagePosition?.y ?? 30}%` }}
+      onError={handleError} />
+  )
+}
+
+import SlotAssignment from '../components/admin/SlotAssignment'
+
+function DisplayOverviewCard({
+  displayData, users, cfg, onUpdated, viewMode, basePath,
+}: {
+  displayData: RemoteData<Display>
+  users:       RemoteData<User>[]
+  cfg:         GitHubConfig
+  onUpdated:   () => Promise<void>
+  viewMode:    'tile' | 'list'
+  basePath:    string
+}) {
+  const display     = displayData.data
+  const sorted      = display.slots.slice().sort((a, b) => a.order - b.order)
+  const [saving, setSaving] = useState<string | null>(null)
+  const shaRef = useRef(displayData.sha)
+  useEffect(() => { shaRef.current = displayData.sha }, [displayData.sha])
+
+  const handleAssign = async (slotId: string, userId: string | undefined) => {
+    setSaving(slotId)
+    try {
+      const newSha = await GH.saveDisplay(cfg, {
+        ...display,
+        slots: display.slots.map((s) => s.id === slotId ? { ...s, userId } : s),
+      }, shaRef.current)
+      shaRef.current = newSha
+      await onUpdated()
+    } catch (err) {
+      alert(`Fehler: ${(err as Error).message}`)
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  const displayUrl = `${basePath}display/${display.id}`
+
+  return (
+    <div className="bg-surface-800 border border-white/10 rounded-2xl overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
+        <div className="flex items-center gap-2">
+          <Monitor className="w-4 h-4 text-white/40" />
+          <span className="font-semibold text-white">{display.name}</span>
+          <span className="text-white/30 text-xs">{sorted.length} Slots</span>
+        </div>
+        <a href={displayUrl} target="_blank" rel="noreferrer"
+          className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
+          öffnen <ExternalLink className="w-3 h-3" />
+        </a>
+      </div>
+
+      {/* Tile view */}
+      {viewMode === 'tile' && (
+        <div className="p-4 flex gap-3 overflow-x-auto">
+          {sorted.length === 0 ? (
+            <p className="text-white/25 text-sm py-2">Keine Slots – im Display anlegen</p>
+          ) : sorted.map((slot) => (
+            <div key={slot.id} className="flex flex-col gap-1.5 flex-1" style={{ minWidth: 120 }}>
+              <p className="text-[10px] text-white/40 font-semibold uppercase tracking-wider truncate text-center">
+                {slot.name}
+              </p>
+              <div className="h-36">
+                <SlotAssignment
+                  slot={slot}
+                  users={users}
+                  cfg={cfg}
+                  onAssign={handleAssign}
+                  saving={saving === slot.id}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* List view */}
+      {viewMode === 'list' && (
+        <div className="divide-y divide-white/5">
+          {sorted.length === 0 && (
+            <p className="px-5 py-4 text-white/25 text-sm">Keine Slots</p>
+          )}
+          {sorted.map((slot) => {
+            const user = slot.userId ? users.find((u) => u.data.id === slot.userId)?.data : null
+            return (
+              <div key={slot.id} className="flex items-center gap-4 px-5 py-3">
+                <div className="w-9 h-9 rounded-full overflow-hidden bg-surface-700 shrink-0 border border-white/10">
+                  {user
+                    ? <OverviewAvatar user={user} cfg={cfg} />
+                    : <div className="w-full h-full flex items-center justify-center text-white/20 text-xs">—</div>
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-white/80 font-medium" style={user?.color ? { color: user.color } : {}}>
+                    {user?.displayName ?? <span className="text-white/25">Niemand</span>}
+                  </p>
+                  {user?.fullName && user.fullName !== user.displayName && (
+                    <p className="text-xs text-white/35 truncate">{user.fullName}</p>
+                  )}
+                </div>
+                <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-white/40 bg-surface-700 px-2.5 py-1 rounded-full border border-white/10">
+                  {slot.name}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AdminPage() {
   const { logout }                  = useAuth()
   const cfg                         = useGitHubConfig()
@@ -74,6 +213,7 @@ export default function AdminPage() {
   const { displays, loading: dl, error: de, reload: reloadDisplays } = useDisplays(cfg)
 
   const [section, setSection]           = useState<Section>('displays')
+  const [overviewMode, setOverviewMode] = useState<'tile' | 'list'>('tile')
   const [activeDisplayId, setActiveDisplayId] = useState<string | null>(null)
   const [editingUser, setEditingUser]   = useState<RemoteData<User> | 'new' | null>(null)
   const { toasts, toast, dismiss }      = useToasts()
@@ -367,72 +507,39 @@ export default function AdminPage() {
           <div className="flex-1 overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-bold text-white">Gesamtübersicht</h2>
-              <button onClick={() => { reloadDisplays(); reloadUsers() }} disabled={dl || ul}
-                className="p-2 rounded-lg bg-surface-700 text-white/50 hover:bg-surface-600 transition-colors">
-                <RefreshCw className={clsx('w-4 h-4', (dl || ul) && 'animate-spin')} />
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Tile / List toggle */}
+                <div className="flex items-center bg-surface-700 rounded-lg p-1 gap-1">
+                  <button
+                    onClick={() => setOverviewMode('tile')}
+                    className={clsx('p-1.5 rounded-md transition-colors', overviewMode === 'tile' ? 'bg-brand-600 text-white' : 'text-white/40 hover:text-white')}
+                    title="Kachelansicht"
+                  ><LayoutGrid className="w-4 h-4" /></button>
+                  <button
+                    onClick={() => setOverviewMode('list')}
+                    className={clsx('p-1.5 rounded-md transition-colors', overviewMode === 'list' ? 'bg-brand-600 text-white' : 'text-white/40 hover:text-white')}
+                    title="Listenansicht"
+                  ><ListIcon className="w-4 h-4" /></button>
+                </div>
+                <button onClick={() => { reloadDisplays(); reloadUsers() }} disabled={dl || ul}
+                  className="p-2 rounded-lg bg-surface-700 text-white/50 hover:bg-surface-600 transition-colors">
+                  <RefreshCw className={clsx('w-4 h-4', (dl || ul) && 'animate-spin')} />
+                </button>
+              </div>
             </div>
             {(dl || ul) && <LoadingSpinner label="Lädt …" className="mt-12" />}
             <div className="space-y-6">
-              {displays.map((d) => {
-                const imageBaseUrl = `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch ?? 'main'}`
-                const sorted = d.data.slots.slice().sort((a, b) => a.order - b.order)
-                const url = `${runtimeCfg?.basePath ?? '/'}display/${d.data.id}`
-                return (
-                  <div key={d.data.id} className="bg-surface-800 border border-white/10 rounded-2xl overflow-hidden">
-                    {/* Display header */}
-                    <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
-                      <div className="flex items-center gap-2">
-                        <Monitor className="w-4 h-4 text-white/40" />
-                        <span className="font-semibold text-white">{d.data.name}</span>
-                        <span className="text-white/30 text-xs">{sorted.length} Slots</span>
-                      </div>
-                      <a href={url} target="_blank" rel="noreferrer"
-                        className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
-                        öffnen ↗
-                      </a>
-                    </div>
-                    {/* Slot rows */}
-                    <div className="divide-y divide-white/5">
-                      {sorted.length === 0 && (
-                        <p className="px-5 py-4 text-white/25 text-sm">Keine Slots</p>
-                      )}
-                      {sorted.map((slot) => {
-                        const user = slot.userId ? users.find((u) => u.data.id === slot.userId)?.data : null
-                        return (
-                          <div key={slot.id} className="flex items-center gap-4 px-5 py-3">
-                            {/* Avatar */}
-                            <div className="w-9 h-9 rounded-full overflow-hidden bg-surface-700 shrink-0 border border-white/10">
-                              {user?.image ? (
-                                <img src={`${imageBaseUrl}/${user.image}`} alt="" className="w-full h-full object-cover"
-                                  style={{ objectPosition: `${user.imagePosition?.x ?? 50}% ${user.imagePosition?.y ?? 30}%` }} />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-white/20 text-xs">
-                                  {user ? user.displayName.charAt(0).toUpperCase() : '—'}
-                                </div>
-                              )}
-                            </div>
-                            {/* Info */}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-white/80 font-medium"
-                                style={user?.color ? { color: user.color } : {}}>
-                                {user?.displayName ?? <span className="text-white/25">Niemand</span>}
-                              </p>
-                              {user?.fullName && user.fullName !== user.displayName && (
-                                <p className="text-xs text-white/35 truncate">{user.fullName}</p>
-                              )}
-                            </div>
-                            {/* Slot badge */}
-                            <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-white/40 bg-surface-700 px-2.5 py-1 rounded-full border border-white/10">
-                              {slot.name}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })}
+              {displays.map((d) => (
+                <DisplayOverviewCard
+                  key={d.data.id}
+                  displayData={d}
+                  users={users}
+                  cfg={cfg}
+                  onUpdated={handleDisplayUpdated}
+                  viewMode={overviewMode}
+                  basePath={runtimeCfg?.basePath ?? '/'}
+                />
+              ))}
             </div>
           </div>
         )}
