@@ -5,8 +5,6 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Allow only one concurrent deployment, skipping runs queued between
-# the run in-progress and latest queued.
 concurrency:
   group: pages
   cancel-in-progress: true
@@ -15,6 +13,9 @@ permissions:
   contents: read
   pages: write
   id-token: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -27,7 +28,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -35,13 +36,11 @@ jobs:
 
       - name: Build
         env:
-          # These secrets must be set in Settings → Secrets → Actions
           VITE_GITHUB_TOKEN:   ${{ secrets.VITE_GITHUB_TOKEN }}
           VITE_GITHUB_OWNER:   ${{ secrets.VITE_GITHUB_OWNER }}
           VITE_DATA_REPO:      ${{ secrets.VITE_DATA_REPO }}
           VITE_DATA_BRANCH:    ${{ secrets.VITE_DATA_BRANCH }}
           VITE_ADMIN_PASSWORD: ${{ secrets.VITE_ADMIN_PASSWORD }}
-          # Change VITE_BASE_PATH to /your-repo-name/ when not using a custom domain
           VITE_BASE_PATH:      ${{ vars.VITE_BASE_PATH || '/' }}
         run: npm run build
 

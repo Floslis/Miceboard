@@ -3,7 +3,7 @@
 // Main admin panel: sidebar nav + content area
 // ─────────────────────────────────────────────────────────────
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   Mic, Users, Monitor, Settings, LogOut, Plus, RefreshCw,
   ChevronRight, X
@@ -36,10 +36,13 @@ export default function AdminPage() {
   const runtimeCfg    = loadConfig()
 
   // ── Select first display automatically ──────────────────
+  // Must be in useEffect – calling setState during render causes infinite loops
 
-  if (!activeDisplayId && displays.length > 0) {
-    setActiveDisplayId(displays[0].data.id)
-  }
+  useEffect(() => {
+    if (!activeDisplayId && displays.length > 0) {
+      setActiveDisplayId(displays[0].data.id)
+    }
+  }, [activeDisplayId, displays])
 
   // ── Add display ──────────────────────────────────────────
 
