@@ -258,7 +258,76 @@ export async function saveSettings(
 
 /** Build the raw GitHub user-content URL for an image in the data repo */
 export function imageUrl(cfg: GitHubConfig, imagePath: string): string {
-  // Use raw.githubusercontent.com for images (faster, no API rate limit)
   const branch = cfg.branch ?? 'main'
   return `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${branch}/${imagePath}`
+}
+
+// ── Auto-Init ────────────────────────────────────────────────
+
+export interface InitResult {
+  created: string[]
+  skipped: string[]
+}
+
+/**
+ * Check whether a file exists in the repo.
+ * Returns the SHA if it does, null if not.
+ */
+async function fileExists(cfg: GitHubConfig, path: string): Promise<string | null> {
+  try {
+    const f = await getFile<unknown>(cfg, path)
+    return f.sha
+  } catch {
+    return null
+  }
+}
+
+/**
+ * First-run setup: create all required files in the private data repo
+ * if they don't already exist. Safe to call multiple times.
+ */
+export async function initializeDataRepo(cfg: GitHubConfig): Promise<InitResult> {
+  const created: string[] = []
+  const skipped: string[] = []
+
+  const ensure = async <T>(path: string, data: T, message: string) => {
+    const exists = await fileExists(cfg, path)
+    if (exists) {
+      skipped.push(path)
+    } else {
+      await putFile(cfg, path, data, undefined, message)
+      created.push(path)
+    }
+  }
+
+  // Default settings
+  await ensure('config/settings.json', {
+    pollInterval: 8000,
+    theme: 'dark',
+    appTitle: 'MicBoard',
+    showClock: true,
+    animateTransitions: true,
+    defaultLayout: 'grid',
+    updatedAt: new Date().toISOString(),
+  }, 'chore: init settings')
+
+  // Default display
+  await ensure('displays/main-stage.json', {
+    id: 'main-stage',
+    name: 'Main Stage',
+    description: 'Default display – rename and configure as needed',
+    layout: 'grid',
+    slots: [
+      { id: 'slot-1', name: 'Speaker',   order: 0 },
+      { id: 'slot-2', name: 'Moderator', order: 1 },
+      { id: 'slot-3', name: 'Worship',   order: 2 },
+      { id: 'slot-4', name: 'Vox 1',     order: 3 },
+    ],
+    updatedAt: new Date().toISOString(),
+  }, 'chore: init default display')
+
+  // Placeholder .gitkeep so the images/ folder shows up in the repo tree
+  await ensure('images/.gitkeep', {}, 'chore: init images folder')
+
+  return { created, skipped }
 }

@@ -1,237 +1,334 @@
 # 🎤 MicBoard
 
-**Live microphone & position display system for churches, events, and stage productions.**
-
-MicBoard runs 100 % on GitHub – no server, no database, no extra services needed.
-All you need is a GitHub account and two repositories.
+**Live microphone & position display for churches, events, and stage productions.**  
+**Live-Mikrofon & Positionsanzeige für Kirchen, Events und Bühnenproduktionen.**
 
 ---
 
-## Features
+<!-- SCREENSHOT PLACEHOLDER – replace with real screenshot once deployed -->
+<!-- ![MicBoard Admin Panel](docs/screenshot-admin.png) -->
+<!-- ![MicBoard Display View](docs/screenshot-display.png) -->
 
-- **Multiple displays** – each with its own URL (stage left, backstage, stream, …)
-- **Live polling** – displays refresh automatically every few seconds
-- **User management** – profiles with photos, names, and accent colours
-- **Slot assignment** – quick single-click assignment during live events
-- **Image optimisation** – photos are auto-converted to WebP in-browser
-- **Fullscreen ready** – works on TVs, beamers, and OBS browser sources
-- **GitHub-native** – fork, configure, and host for free in minutes
+> **Note / Hinweis:** Screenshots werden nach dem ersten Live-Einsatz ergänzt.
 
 ---
 
-## Quick start (5 minutes)
+## 🌍 Language / Sprache
 
-### 1 — Fork the public repo
+- [🇩🇪 Deutsch](#deutsch)
+- [🇬🇧 English](#english)
 
-Click **Fork** on this repository. This gives you your own copy of MicBoard.
+---
 
-### 2 — Create a private data repository
+<a id="deutsch"></a>
+# 🇩🇪 Deutsch
 
-Create a **new private** GitHub repository (e.g. `micboard-data`).
+## Was ist MicBoard?
 
-Initialise it with the following folder structure (you can commit example files from `example-data/`):
+MicBoard ist ein webbasiertes Display-System das in Echtzeit anzeigt, welche Person welches Mikrofon oder welche Bühnenposition belegt. Es ist speziell für den Einsatz in:
 
-```
-micboard-data/
-├── users/
-│   └── user-1.json
-├── displays/
-│   └── main-stage.json
-├── config/
-│   └── settings.json
-└── images/
-```
+- ⛪ Kirchen und Gottesdiensten
+- 🎤 Moderationen und Events
+- 🎸 Bühnenproduktionen und Konzerten
+- 📡 Streams und Online-Übertragungen
+- 🎬 Theater und Showproduktionen
 
-### 3 — Generate a GitHub Personal Access Token
+### Warum MicBoard?
 
-Go to **GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens**.
+Das Soundteam weiß immer genau, wer gerade welches Mikrofon trägt – ohne Zuruferei, ohne Zettel, ohne Missverständnisse. Displays können auf TVs, Beamern oder als OBS Browser Source laufen.
 
-Required permissions on your **private data repository**:
+### Technischer Ansatz: 100 % GitHub-nativ
+
+MicBoard braucht keinen eigenen Server, keine Datenbank und keine externen Dienste.  
+Alle Daten liegen als JSON-Dateien in einem **privaten GitHub Repository**.  
+Die App läuft kostenlos auf **GitHub Pages**.
+
+---
+
+## Schnellstart (5 Minuten)
+
+### Schritt 1 – Repository forken
+
+Klicke oben rechts auf **Fork** und erstelle deine eigene Kopie des Repositories.
+
+### Schritt 2 – GitHub Pages aktivieren
+
+In deinem geforkten Repo: **Settings → Pages → Source: GitHub Actions** → Speichern.
+
+### Schritt 3 – Privates Datenrepository erstellen
+
+Erstelle ein **neues privates** Repository, z. B. `micboard-data`.  
+Aktiviere beim Erstellen „Add a README file" (damit das Repo nicht leer ist).
+
+### Schritt 4 – GitHub Token erstellen
+
+Gehe zu **GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens**.
+
+Berechtigungen für das **Datenrepository**:
 - **Contents** – Read and write
 - **Metadata** – Read
 
-Or use a classic token with the `repo` scope.
+Oder: Classic Token mit `repo` Scope.
 
-### 4 — Configure secrets in your public repo
+### Schritt 5 – Secrets eintragen
 
-Go to your forked repo → **Settings → Secrets and variables → Actions**:
+In deinem **öffentlichen** Fork-Repo: **Settings → Secrets and variables → Actions**
 
-| Secret | Value |
-|--------|-------|
+| Secret | Beschreibung |
+|--------|-------------|
+| `VITE_GITHUB_TOKEN` | Dein Personal Access Token |
+| `VITE_GITHUB_OWNER` | Dein GitHub-Benutzername |
+| `VITE_DATA_REPO` | Name des Daten-Repos (z. B. `micboard-data`) |
+| `VITE_DATA_BRANCH` | Branch des Daten-Repos (meistens `main`) |
+| `VITE_ADMIN_PASSWORD` | Dein Admin-Passwort |
+
+Unter **Variables** (nicht Secrets!):
+
+| Variable | Wert |
+|----------|------|
+| `VITE_BASE_PATH` | `/dein-repo-name/` – z. B. `/Miceboard/` |
+
+### Schritt 6 – Deployment starten
+
+**Actions → Deploy to GitHub Pages → Run workflow**
+
+Nach ca. 1–2 Minuten ist die App live.
+
+### Schritt 7 – Ersteinrichtung
+
+Öffne `https://DEIN-USERNAME.github.io/REPO-NAME/`
+
+1. Gib Token, Owner und Datenrepository ein
+2. Klicke **Speichern & einrichten** – die App erstellt alle nötigen Dateien automatisch
+3. Logge dich mit deinem Admin-Passwort ein
+4. Lege Nutzer an, lade Fotos hoch, konfiguriere Displays
+
+---
+
+## Displays aufrufen
+
+Jedes Display hat eine eigene URL:
+
+```
+https://DEIN-USERNAME.github.io/REPO-NAME/display/DISPLAY-ID
+```
+
+Beispiel: `.../display/main-stage`, `.../display/backstage`
+
+Diese URLs können direkt als **OBS Browser Source** oder auf einem **TV/Beamer** geöffnet werden.
+
+---
+
+## Updates aus dem Original-Repository ziehen
+
+Wenn im Original-Repository (Floslis/Miceboard) Updates erscheinen, kannst du diese in deinen Fork übernehmen:
+
+**Per GitHub-Weboberfläche (einfachste Methode):**
+1. Gehe zu deinem Fork auf GitHub
+2. Klicke auf **"Sync fork"** → **"Update branch"**
+
+**Per Terminal:**
+```bash
+git remote add upstream https://github.com/Floslis/Miceboard.git
+git fetch upstream
+git merge upstream/main
+git push
+```
+
+> ⚠️ Eigene Anpassungen am Code solltest du in einem separaten Branch oder per Fork-Commit sichern, damit Merges reibungslos laufen.
+
+---
+
+## Datenstruktur
+
+```
+micboard-data/          ← privates GitHub-Repo
+├── config/
+│   ├── settings.json   ← globale Einstellungen
+│   └── logo.webp       ← dein Logo (optional)
+├── displays/
+│   └── main-stage.json ← Display-Konfiguration
+├── images/
+│   └── user-xyz.webp   ← Profilbilder
+└── users/
+    └── user-1.json     ← Nutzerdaten
+```
+
+---
+
+## Lokale Entwicklung
+
+```bash
+git clone https://github.com/DEIN-USERNAME/Miceboard.git
+cd Miceboard
+npm install
+cp .env.example .env.local
+# .env.local mit deinen Werten füllen
+npm run dev
+```
+
+---
+
+<a id="english"></a>
+# 🇬🇧 English
+
+## What is MicBoard?
+
+MicBoard is a web-based display system that shows in real time which person is using which microphone or stage position. It's built for:
+
+- ⛪ Churches and worship services
+- 🎤 Events and moderated shows
+- 🎸 Stage productions and concerts
+- 📡 Live streams and broadcasts
+- 🎬 Theater and live TV productions
+
+### Why MicBoard?
+
+The sound team always knows who's wearing which mic — no shouting across the room, no sticky notes, no confusion. Displays work on TVs, projectors, or as OBS browser sources.
+
+### Technical approach: 100 % GitHub-native
+
+MicBoard needs no server, no database, no third-party services.  
+All data is stored as JSON files in a **private GitHub repository**.  
+The app runs for free on **GitHub Pages**.
+
+---
+
+## Quick Start (5 minutes)
+
+### Step 1 – Fork the repository
+
+Click **Fork** in the top-right corner to create your own copy.
+
+### Step 2 – Enable GitHub Pages
+
+In your fork: **Settings → Pages → Source: GitHub Actions** → Save.
+
+### Step 3 – Create a private data repository
+
+Create a **new private** repository, e.g. `micboard-data`.  
+Enable "Add a README file" during creation so the repo isn't empty.
+
+### Step 4 – Create a GitHub token
+
+Go to **GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens**.
+
+Required permissions on the **data repository**:
+- **Contents** – Read and write
+- **Metadata** – Read
+
+Or: Classic token with `repo` scope.
+
+### Step 5 – Set up secrets
+
+In your **public** fork: **Settings → Secrets and variables → Actions**
+
+| Secret | Description |
+|--------|-------------|
 | `VITE_GITHUB_TOKEN` | Your personal access token |
 | `VITE_GITHUB_OWNER` | Your GitHub username |
-| `VITE_DATA_REPO` | Name of your data repo (e.g. `micboard-data`) |
-| `VITE_DATA_BRANCH` | Branch name (usually `main`) |
-| `VITE_ADMIN_PASSWORD` | A strong password for the admin panel |
+| `VITE_DATA_REPO` | Name of the data repo (e.g. `micboard-data`) |
+| `VITE_DATA_BRANCH` | Branch of the data repo (usually `main`) |
+| `VITE_ADMIN_PASSWORD` | Your admin password |
 
-Optional variable (under **Variables**, not Secrets):
+Under **Variables** (not Secrets!):
 
 | Variable | Value |
 |----------|-------|
-| `VITE_BASE_PATH` | `/micboard/` (if deploying to `username.github.io/micboard`) or `/` for custom domains |
+| `VITE_BASE_PATH` | `/your-repo-name/` – e.g. `/Miceboard/` |
 
-### 5 — Enable GitHub Pages
+### Step 6 – Trigger deployment
 
-Go to **Settings → Pages**:
-- **Source**: GitHub Actions
+**Actions → Deploy to GitHub Pages → Run workflow**
 
-Now push any commit (or trigger the workflow manually) to deploy.
+After about 1–2 minutes the app is live.
 
-### 6 — Done!
+### Step 7 – First-run setup
 
-Your MicBoard is live at:
-- `https://your-username.github.io/micboard/` — admin panel
-- `https://your-username.github.io/micboard/display/main-stage` — display page
+Open `https://YOUR-USERNAME.github.io/REPO-NAME/`
+
+1. Enter your token, owner and data repository
+2. Click **Save & initialize** – the app creates all required files automatically
+3. Log in with your admin password
+4. Create users, upload photos, configure displays
 
 ---
 
-## Development
+## Opening displays
+
+Each display has its own URL:
+
+```
+https://YOUR-USERNAME.github.io/REPO-NAME/display/DISPLAY-ID
+```
+
+Example: `.../display/main-stage`, `.../display/backstage`
+
+Open these URLs directly as an **OBS Browser Source** or on a **TV/projector**.
+
+---
+
+## Pulling updates from the original repository
+
+When updates appear in the original repo (Floslis/Miceboard), you can merge them into your fork:
+
+**Via GitHub web interface (easiest):**
+1. Go to your fork on GitHub
+2. Click **"Sync fork"** → **"Update branch"**
+
+**Via terminal:**
+```bash
+git remote add upstream https://github.com/Floslis/Miceboard.git
+git fetch upstream
+git merge upstream/main
+git push
+```
+
+> ⚠️ If you've made custom code changes, save them in a separate branch first so merges go smoothly.
+
+---
+
+## Data structure
+
+```
+micboard-data/          ← private GitHub repo
+├── config/
+│   ├── settings.json   ← global settings
+│   └── logo.webp       ← your logo (optional)
+├── displays/
+│   └── main-stage.json ← display configuration
+├── images/
+│   └── user-xyz.webp   ← profile images
+└── users/
+    └── user-1.json     ← user data
+```
+
+---
+
+## Local development
 
 ```bash
-# Install dependencies
+git clone https://github.com/YOUR-USERNAME/Miceboard.git
+cd Miceboard
 npm install
-
-# Copy the example env file
 cp .env.example .env.local
-# → Edit .env.local with your real values
-
-# Start the dev server
+# fill in .env.local with your values
 npm run dev
-
-# Build for production
-npm run build
 ```
 
 ---
 
-## Architecture
+## Tech stack
 
-```
-Browser (React + Vite + TailwindCSS)
-         │
-         │  GitHub REST API
-         ▼
-Private data repository (JSON files + images)
-         │
-         └── users/user-*.json
-         └── displays/display-*.json
-         └── config/settings.json
-         └── images/*.webp
-```
-
-### Why GitHub as a database?
-
-- No server costs
-- No vendor lock-in
-- Full version history of every change
-- Easy to backup, export, and self-host
-- Works within GitHub's free tier
-
-### Live updates
-
-Display pages poll the GitHub API every 8 seconds (configurable).
-Because GitHub's raw content URLs include ETags, unchanged files incur almost no bandwidth.
-
----
-
-## Data format
-
-### User (`users/{id}.json`)
-
-```jsonc
-{
-  "id": "user-1",
-  "displayName": "Max",          // Short name on the display
-  "fullName": "Max Mustermann",  // Full name in admin panel
-  "role": "Prediger",            // Optional role tag
-  "image": "images/user-1.webp", // Path inside data repo
-  "imagePosition": { "x": 50, "y": 25 }, // % for background-position
-  "imageScale": 1.2,             // Zoom factor (1.0 = 100%)
-  "color": "#6366f1",            // Optional accent hex colour
-  "tags": ["worship"],           // Optional tags
-  "active": true
-}
-```
-
-### Display (`displays/{id}.json`)
-
-```jsonc
-{
-  "id": "main-stage",
-  "name": "Hauptbühne",
-  "description": "...",
-  "layout": "grid",              // "grid" | "row" | "column"
-  "slots": [
-    {
-      "id": "slot-prediger",
-      "name": "Prediger",        // Slot label shown on display
-      "userId": "user-1",        // Assigned user (omit for empty slot)
-      "order": 0,                // Sort order
-      "color": "#6366f1"         // Optional slot accent colour
-    }
-  ]
-}
-```
-
-### Settings (`config/settings.json`)
-
-```jsonc
-{
-  "pollInterval": 8000,          // ms between display refreshes
-  "theme": "dark",
-  "appTitle": "MicBoard",
-  "showClock": true,
-  "animateTransitions": true,
-  "defaultLayout": "grid"
-}
-```
-
----
-
-## Display URLs
-
-Each display gets its own URL:
-
-```
-/display/{displayId}
-```
-
-Examples:
-- `/display/main-stage`
-- `/display/backstage`
-- `/display/stream-control`
-
-Open the URL in full-screen on any browser, TV, or as an OBS browser source.
-
----
-
-## Extending MicBoard
-
-The codebase is intentionally modular. Planned or easy-to-add features:
-
-- **Drag & drop** slot reordering
-- **Multiple themes** (cinema, light, custom brand)
-- **OBS integration** via browser source parameters
-- **QR codes** on display pages for quick setup
-- **Transition animations** between assignments
-- **User status** (online/offline/on-stage)
-- **Multiple productions/teams** with separate display sets
-
----
-
-## Troubleshooting
-
-**Display not updating?**
-Check the small green dot in the top-right of the display page. If it's gone, the API may be rate-limited. Increase the poll interval in Settings.
-
-**"Connection failed" in setup?**
-Verify the token has `repo` (classic) or `Contents: read+write` (fine-grained) permissions, and that the owner + repo name are correct (case-sensitive).
-
-**Images not showing?**
-Images are served from `raw.githubusercontent.com`. Your data repo must be accessible with the token you configured.
-
-**GitHub Pages 404 on direct URL?**
-The `public/404.html` file handles SPA routing redirects. Make sure it was deployed correctly.
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18 + TypeScript |
+| Build tool | Vite |
+| Styling | TailwindCSS |
+| Routing | React Router v6 |
+| Data storage | GitHub REST API |
+| Hosting | GitHub Pages |
+| CI/CD | GitHub Actions |
 
 ---
 
@@ -241,4 +338,4 @@ MIT – fork, adapt, use freely.
 
 ---
 
-*Built for live production teams who need reliable, fast, and simple microphone tracking.*
+*Built for live production teams that need fast, reliable, and simple microphone tracking.*

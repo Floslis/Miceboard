@@ -3,10 +3,10 @@
 // Main admin panel: sidebar nav + content area
 // ─────────────────────────────────────────────────────────────
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Mic, Users, Monitor, Settings, LogOut, Plus, RefreshCw,
-  ChevronRight, X
+  ChevronRight, Upload, X
 } from 'lucide-react'
 import clsx from 'clsx'
 import type { User, Display, RemoteData } from '../types'
@@ -14,6 +14,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useGitHubConfig, useUsers, useDisplays } from '../hooks/useGitHub'
 import { loadConfig, saveConfig, clearConfig } from '../lib/config'
 import * as GH from '../lib/github'
+import { fileToWebP, isValidImageFile } from '../lib/imageUtils'
+import { useLogo, LOGO_PATH } from '../hooks/useLogo'
 import DisplayPanel from '../components/admin/DisplayPanel'
 import UserEditor from '../components/admin/UserEditor'
 import ToastContainer, { useToasts } from '../components/common/Toast'
@@ -24,6 +26,7 @@ type Section = 'displays' | 'users' | 'settings'
 export default function AdminPage() {
   const { logout }                  = useAuth()
   const cfg                         = useGitHubConfig()
+  const logoUrl                     = useLogo(cfg)
   const { users, loading: ul, error: ue, reload: reloadUsers, save: saveUser, remove: removeUser } = useUsers(cfg)
   const { displays, loading: dl, error: de, reload: reloadDisplays, save: saveDisplay } = useDisplays(cfg)
 
@@ -105,6 +108,32 @@ export default function AdminPage() {
     toast.success('Einstellungen gespeichert. Bitte Seite neu laden.')
   }
 
+  // ── Logo upload ───────────────────────────────────────────
+
+  const logoInputRef             = useRef<HTMLInputElement>(null)
+  const [logoUploading, setLogoUploading] = useState(false)
+  const [logoPreview, setLogoPreview]     = useState<string | null>(null)
+
+  const handleLogoUpload = useCallback(async (file: File) => {
+    if (!cfg) return
+    if (!isValidImageFile(file)) { toast.error('Nur Bilddateien erlaubt.'); return }
+    setLogoUploading(true)
+    try {
+      const { base64 } = await fileToWebP(file, 512, 0.9)
+      await GH.uploadBinary(cfg, LOGO_PATH, base64, undefined, 'chore: update logo')
+      const preview = `data:image/webp;base64,${base64}`
+      setLogoPreview(preview)
+      // Also update the favicon immediately
+      const link = document.querySelector<HTMLLinkElement>("link[rel~='icon']")
+      if (link) link.href = preview
+      toast.success('Logo gespeichert.')
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setLogoUploading(false)
+    }
+  }, [cfg, toast])
+
   // ── Render ───────────────────────────────────────────────
 
   if (!cfg) {
@@ -121,8 +150,12 @@ export default function AdminPage() {
       <aside className="w-64 shrink-0 flex flex-col bg-surface-800 border-r border-white/10">
         {/* Logo */}
         <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
-          <div className="w-8 h-8 rounded-lg bg-brand-600/30 border border-brand-500/40 flex items-center justify-center">
-            <Mic className="w-4 h-4 text-brand-400" />
+          <div className="w-8 h-8 rounded-lg bg-brand-600/30 border border-brand-500/40 flex items-center justify-center overflow-hidden shrink-0">
+            {(logoPreview ?? logoUrl) ? (
+              <img src={logoPreview ?? logoUrl!} alt="Logo" className="w-full h-full object-contain" />
+            ) : (
+              <Mic className="w-4 h-4 text-brand-400" />
+            )}
           </div>
           <span className="font-bold text-white text-lg">MicBoard</span>
         </div>
@@ -324,6 +357,40 @@ export default function AdminPage() {
             <h2 className="text-xl font-bold text-white mb-6">Einstellungen</h2>
 
             <div className="max-w-lg space-y-5">
+              {/* Logo upload */}
+              <div className="bg-surface-800 border border-white/10 rounded-2xl p-5 space-y-4">
+                <p className="text-sm font-semibold text-white/70 uppercase tracking-wider">Logo</p>
+                <p className="text-xs text-white/40">
+                  Wird als Favicon und Sidebar-Icon verwendet. Empfohlen: quadratisches Bild, min. 256×256 px.
+                </p>
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-xl bg-surface-700 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+                    {(logoPreview ?? logoUrl) ? (
+                      <img src={logoPreview ?? logoUrl!} alt="Logo" className="w-full h-full object-contain p-1" />
+                    ) : (
+                      <Mic className="w-7 h-7 text-white/20" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <button
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={logoUploading}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-700 hover:bg-surface-600 text-white/70 hover:text-white border border-white/10 text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      <Upload className="w-4 h-4" />
+                      {logoUploading ? 'Wird hochgeladen …' : 'Logo hochladen'}
+                    </button>
+                    <p className="text-xs text-white/30 mt-1.5">PNG, JPEG oder WebP</p>
+                  </div>
+                </div>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f) }}
+                />
+              </div>
               <div className="bg-surface-800 border border-white/10 rounded-2xl p-5 space-y-4">
                 <p className="text-sm font-semibold text-white/70 uppercase tracking-wider">GitHub-Verbindung</p>
 
