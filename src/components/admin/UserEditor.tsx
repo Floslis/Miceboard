@@ -41,6 +41,11 @@ const PALETTES = {
 
 type PaletteName = keyof typeof PALETTES
 
+function randomFrom(palette: PaletteName): string {
+  const colors = PALETTES[palette]
+  return colors[Math.floor(Math.random() * colors.length)]
+}
+
 function ColorPicker({ value, onChange }: { value?: string; onChange: (c: string | undefined) => void }) {
   const [palette, setPalette] = useState<PaletteName>('Kräftig')
   const colors = PALETTES[palette]
@@ -49,6 +54,11 @@ function ColorPicker({ value, onChange }: { value?: string; onChange: (c: string
     const idx = (colors as readonly string[]).indexOf(value ?? '')
     const next = colors[(idx + 1) % colors.length]
     onChange(next)
+  }
+
+  const handlePaletteChange = (p: PaletteName) => {
+    setPalette(p)
+    onChange(randomFrom(p))   // sofort eine zufällige Farbe aus dem neuen Mood wählen
   }
 
   return (
@@ -61,7 +71,7 @@ function ColorPicker({ value, onChange }: { value?: string; onChange: (c: string
           {(Object.keys(PALETTES) as PaletteName[]).map((p) => (
             <button
               key={p}
-              onClick={() => setPalette(p)}
+              onClick={() => handlePaletteChange(p)}
               className={clsx(
                 'px-2.5 py-1 rounded-lg text-xs font-medium transition-colors',
                 palette === p
@@ -174,6 +184,7 @@ export default function UserEditor({ existing, cfg, displays = [], onSaved, onDe
       displayName: '',
       fullName:    '',
       active:      true,
+      color:       randomFrom('Kräftig'),   // zufällige Startfarbe aus dem Standard-Mood
     },
   )
   const [previewImg, setPreviewImg] = useState<string | null>(null)
