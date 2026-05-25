@@ -36,18 +36,32 @@ export default function DisplayView({ displayId, cfg, showClock = true, pollInte
   const prevShаRef = useRef<string>('')
 
   const poll = useCallback(async () => {
-    const [displayData, usersData] = await Promise.all([
-      GH.getDisplay(cfg, displayId),
-      GH.listUsers(cfg),
-    ])
-    // Only update state when data actually changed (avoids pointless re-renders)
-    if (displayData.sha !== prevShаRef.current) {
-      prevShаRef.current = displayData.sha
-      setDisplay(displayData)
-      const map = new Map<string, User>()
-      usersData.forEach((u) => map.set(u.data.id, u.data))
-      setUsers(map)
+    // Step 1: fetch the display config (1 request).
+    // Without ?t=Date.now() the browser sends If-None-Match; GitHub returns a
+    // free 304 when nothing changed – those don't consume rate-limit quota.
+    const displayData = await GH.getDisplay(cfg, displayId)
+
+    if (displayData.sha === prevShаRef.current) {
+      // Nothing changed – skip all user fetches (saves N requests per poll)
+      setError(null)
+      setIsFirstLoad(false)
+      return
     }
+
+    // Step 2: display changed – fetch only the users assigned to visible slots
+    // (not every user in the repo). Reduces N+1 to assigned-slot count.
+    const assignedIds = [
+      ...new Set(
+        displayData.data.slots
+          .map((s) => s.userId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ]
+    const userMap = await GH.getUsersByIds(cfg, assignedIds)
+
+    prevShаRef.current = displayData.sha
+    setDisplay(displayData)
+    setUsers(userMap)
     setError(null)
     setIsFirstLoad(false)
   // cfg and displayId are stable (memoized in DisplayPage) – safe as deps

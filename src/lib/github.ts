@@ -25,6 +25,33 @@ function headers(token: string) {
   }
 }
 
+// ── In-flight GET deduplication ──────────────────────────────
+// If two callers request the same URL simultaneously, we return
+// the same Promise so only one HTTP request is made.
+// GitHub 304 (ETag / If-None-Match) responses don't count against
+// the rate limit, so we intentionally omit ?t=Date.now() on GETs
+// to let the browser send conditional requests automatically.
+
+const inflightGETs = new Map<string, Promise<unknown>>()
+
+async function githubGET(url: string, token: string): Promise<unknown> {
+  const cached = inflightGETs.get(url)
+  if (cached) return cached
+
+  const promise = fetch(url, { headers: headers(token) }).then(async (res) => {
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error((err as { message?: string }).message ?? `HTTP ${res.status}`)
+    }
+    return res.json()
+  })
+
+  inflightGETs.set(url, promise)
+  // Remove on completion so future calls go fresh (only deduplicates concurrent calls)
+  promise.catch(() => {}).finally(() => inflightGETs.delete(url))
+  return promise
+}
+
 // ── Low-level helpers ────────────────────────────────────────
 
 /** Fetch a single file from the data repo and decode its JSON content */
@@ -33,13 +60,9 @@ export async function getFile<T>(
   path: string,
 ): Promise<RemoteData<T>> {
   const ref = cfg.branch ?? 'main'
-  const url = `${API}/repos/${cfg.owner}/${cfg.repo}/contents/${path}?ref=${ref}&t=${Date.now()}`
-  const res = await fetch(url, { headers: headers(cfg.token) })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error((err as { message?: string }).message ?? `HTTP ${res.status}`)
-  }
-  const file: GitHubFile = await res.json()
+  // No ?t=Date.now() – browser sends ETag/If-None-Match; GitHub 304s are free
+  const url = `${API}/repos/${cfg.owner}/${cfg.repo}/contents/${path}?ref=${ref}`
+  const file = await githubGET(url, cfg.token) as GitHubFile
   if (!file.content) throw new Error(`File ${path} has no content`)
 
   // atob() returns a binary string; special chars (ü, ä, ö …) are stored
@@ -57,14 +80,15 @@ export async function listDir(
   path: string,
 ): Promise<GitHubFile[]> {
   const ref = cfg.branch ?? 'main'
-  const url = `${API}/repos/${cfg.owner}/${cfg.repo}/contents/${path}?ref=${ref}&t=${Date.now()}`
-  const res = await fetch(url, { headers: headers(cfg.token) })
-  if (!res.ok) {
-    if (res.status === 404) return []
-    throw new Error(`HTTP ${res.status}`)
+  // No ?t=Date.now() – ETag caching keeps this free when dir hasn't changed
+  const url = `${API}/repos/${cfg.owner}/${cfg.repo}/contents/${path}?ref=${ref}`
+  try {
+    const data = await githubGET(url, cfg.token)
+    return Array.isArray(data) ? (data as GitHubFile[]) : []
+  } catch (err) {
+    if ((err as Error).message?.includes('404')) return []
+    throw err
   }
-  const data = await res.json()
-  return Array.isArray(data) ? data : []
 }
 
 /** Create or update a JSON file in the data repo */
@@ -200,14 +224,27 @@ export async function listUsers(cfg: GitHubConfig): Promise<RemoteData<User>[]> 
     .map((r) => r.value)
 }
 
+/**
+ * Fetch a specific subset of users by ID.
+ * Used by DisplayView to avoid fetching all users on every poll –
+ * only the users actually assigned to visible slots are loaded.
+ */
+export async function getUsersByIds(cfg: GitHubConfig, ids: string[]): Promise<Map<string, User>> {
+  if (ids.length === 0) return new Map()
+  const results = await Promise.allSettled(ids.map((id) => getFile<User>(cfg, `users/${id}.json`)))
+  const map = new Map<string, User>()
+  results.forEach((r) => {
+    if (r.status === 'fulfilled') map.set(r.value.data.id, r.value.data)
+  })
+  return map
+}
+
 /** Get just the SHA of a file without decoding content (for binary files like images) */
 export async function getFileSha(cfg: GitHubConfig, path: string): Promise<string | null> {
   try {
     const ref = cfg.branch ?? 'main'
-    const url = `${API}/repos/${cfg.owner}/${cfg.repo}/contents/${path}?ref=${ref}&t=${Date.now()}`
-    const res = await fetch(url, { headers: headers(cfg.token) })
-    if (!res.ok) return null
-    const file = await res.json() as { sha: string }
+    const url = `${API}/repos/${cfg.owner}/${cfg.repo}/contents/${path}?ref=${ref}`
+    const file = await githubGET(url, cfg.token) as { sha: string }
     return file.sha ?? null
   } catch {
     return null
