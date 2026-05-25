@@ -109,10 +109,13 @@ export default function ImageEditor({
   const handleTouchEnd = useCallback(() => { dragRef.current = null }, [])
 
   // ── Geometry ─────────────────────────────────────────────
+  // Maintain correct slot proportions, but enforce a min width of 110 px
+  // so the preview is never a thin sliver for many-slot displays (e.g. 6-slot 16:9).
 
   const slotRatio  = computeSlotRatio(aspectRatio, slotCount)
-  const previewH   = PREVIEW_H
-  const previewW   = Math.round(previewH * slotRatio)
+  const naturalW   = PREVIEW_H * slotRatio
+  const previewW   = Math.max(110, Math.round(naturalW))
+  const previewH   = naturalW >= 110 ? PREVIEW_H : Math.round(previewW / slotRatio)
 
   // ── Render ───────────────────────────────────────────────
 

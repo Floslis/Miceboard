@@ -417,7 +417,7 @@ export default function UserEditor({ existing, cfg, displays = [], onSaved, onDe
 
         {/* ── Right: visual image editor ─────────────────── */}
         {imgSrc && (
-          <div className="w-72 shrink-0 border-l border-white/10 bg-surface-900/60 flex flex-col overflow-y-auto">
+          <div className="w-80 shrink-0 border-l border-white/10 bg-surface-900/60 flex flex-col overflow-y-auto">
             <div className="p-5 space-y-5">
 
               {/* Section title */}

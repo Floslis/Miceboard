@@ -159,7 +159,7 @@ function DisplayOverviewCard({
               <p className="text-[10px] text-white/40 font-semibold uppercase tracking-wider truncate text-center">
                 {slot.name}
               </p>
-              <div className="h-36">
+              <div className="h-48">
                 <SlotAssignment
                   slot={slot}
                   users={users}
@@ -216,7 +216,7 @@ export default function AdminPage() {
   const { users, loading: ul, error: ue, reload: reloadUsers, save: saveUser, remove: removeUser } = useUsers(cfg)
   const { displays, loading: dl, error: de, reload: reloadDisplays } = useDisplays(cfg)
 
-  const [section, setSection]           = useState<Section>('displays')
+  const [section, setSection]           = useState<Section>('overview')
   const [overviewMode, setOverviewMode] = useState<'tile' | 'list'>('tile')
   const [activeDisplayId, setActiveDisplayId] = useState<string | null>(null)
   const [editingUser, setEditingUser]   = useState<RemoteData<User> | 'new' | null>(null)
