@@ -82,6 +82,18 @@ npm install
 
 {Foto (Firebase Console: Realtime Database Übersicht mit Datenbankinhalt – users, displays, config als Baumstruktur sichtbar)}
 
+### 2a · Enable Anonymous Authentication
+
+MicBoard uses Firebase Anonymous Auth so the admin can write to the database.  
+**This step is required — without it all writes will fail with PERMISSION_DENIED.**
+
+1. In your Firebase project: **Build → Authentication**
+2. If you see a **"Get started"** button, click it first
+3. Go to the **Sign-in method** tab
+4. Click **Anonymous** → toggle **Enable** → **Save**
+
+{Foto (Firebase Console: Authentication → Sign-in method, Anonymous-Eintrag mit aktiviertem Toggle)}
+
 ### 3 · Create a private GitHub repo for images
 
 Create a new **private** repository (e.g. `micboard-data`) — this is where user photos will be stored.  
@@ -142,6 +154,8 @@ Once everything works, update the Firebase rules under **Realtime Database → R
 ```
 
 The admin login triggers anonymous Firebase auth — only logged-in admins can write. Display screens read without auth.
+
+> **Prerequisite:** Anonymous Authentication must be enabled (see step 2a). If you get `PERMISSION_DENIED` after setting these rules, that is the cause.
 
 ---
 
