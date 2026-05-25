@@ -27,12 +27,19 @@ git checkout main && git merge dev && git push origin main
 
 ---
 
-## Git Push Befehl (mit Token)
+## Git-Befehle (wichtige Regeln)
+
+- Der Nutzer braucht **keinen Token** – GitHub ist lokal im Terminal gespeichert.
+- Der Sandbox-Prozess hinterlässt immer eine `.git/HEAD.lock`-Datei.  
+  → Alle Befehle die `git checkout` oder `git merge` enthalten **immer als Einzeiler** mit `rm -f .git/HEAD.lock &&` davor senden.
+- Befehle immer **einzeln pro Zeile** senden, nie als Block mit Kommentaren dazwischen.
 
 ```bash
-git push https://DEIN_TOKEN@github.com/Floslis/Miceboard.git dev
-# oder für main:
-git push https://DEIN_TOKEN@github.com/Floslis/Miceboard.git main
+# Dev pushen
+git push origin dev
+
+# Auf main mergen und pushen
+rm -f .git/HEAD.lock && git checkout main && git merge dev && git push origin main && rm -f .git/HEAD.lock && git checkout dev
 ```
 
 ---

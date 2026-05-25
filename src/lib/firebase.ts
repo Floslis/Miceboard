@@ -14,6 +14,12 @@ import {
 import { db, auth } from './firebaseApp'
 import type { User, Display, AppSettings } from '../types'
 
+// ── Sanitizer ────────────────────────────────────────────────
+// Firebase rejects `undefined` values. JSON round-trip strips them cleanly.
+function sanitize<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj)) as T
+}
+
 // ── Guard helper ─────────────────────────────────────────────
 
 function requireDb() {
@@ -49,7 +55,7 @@ export async function signOutAdmin(): Promise<void> {
 // ── Users ────────────────────────────────────────────────────
 
 export async function saveUser(user: User): Promise<void> {
-  const updated = { ...user, updatedAt: new Date().toISOString() }
+  const updated = sanitize({ ...user, updatedAt: new Date().toISOString() })
   await set(userRef(user.id), updated)
 }
 
@@ -77,7 +83,7 @@ export function onUsersChange(callback: (users: User[]) => void): () => void {
 // ── Displays ─────────────────────────────────────────────────
 
 export async function saveDisplay(display: Display): Promise<void> {
-  const updated = { ...display, updatedAt: new Date().toISOString() }
+  const updated = sanitize({ ...display, updatedAt: new Date().toISOString() })
   await set(displayRef(display.id), updated)
 }
 
@@ -158,7 +164,7 @@ export async function getSettings(): Promise<AppSettings> {
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
-  const updated = { ...settings, updatedAt: new Date().toISOString() }
+  const updated = sanitize({ ...settings, updatedAt: new Date().toISOString() })
   await set(settingsRef(), updated)
 }
 

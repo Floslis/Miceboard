@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import type { Config } from '../types'
+import { isFirebaseConfigured } from './firebaseApp'
 
 const LS_KEY = 'micboard_config'
 
@@ -48,7 +49,9 @@ export function clearConfig(): void {
 }
 
 export function isConfigured(): boolean {
-  return loadConfig() !== null
+  // Firebase is now the primary backend → configured when Firebase env-vars are present.
+  // Fall back to checking GitHub config for backwards compat (local dev without secrets).
+  return isFirebaseConfigured() || loadConfig() !== null
 }
 
 export const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD ?? ''

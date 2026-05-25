@@ -18,12 +18,17 @@ export function useUsers() {
 
   useEffect(() => {
     setLoading(true)
-    const unsub = FB.onUsersChange((all) => {
-      setUsers(all.map((u) => ({ data: u, sha: '', path: `users/${u.id}` })))
+    try {
+      const unsub = FB.onUsersChange((all) => {
+        setUsers(all.map((u) => ({ data: u, sha: '', path: `users/${u.id}` })))
+        setLoading(false)
+        setError(null)
+      })
+      return unsub
+    } catch (e) {
+      setError((e as Error).message)
       setLoading(false)
-      setError(null)
-    })
-    return unsub
+    }
   }, [])
 
   const save = useCallback(async (user: User, _sha?: string): Promise<string> => {
@@ -50,12 +55,17 @@ export function useDisplays() {
 
   useEffect(() => {
     setLoading(true)
-    const unsub = FB.onDisplaysChange((all) => {
-      setDisplays(all.map((d) => ({ data: d, sha: '', path: `displays/${d.id}` })))
+    try {
+      const unsub = FB.onDisplaysChange((all) => {
+        setDisplays(all.map((d) => ({ data: d, sha: '', path: `displays/${d.id}` })))
+        setLoading(false)
+        setError(null)
+      })
+      return unsub
+    } catch (e) {
+      setError((e as Error).message)
       setLoading(false)
-      setError(null)
-    })
-    return unsub
+    }
   }, [])
 
   const save = useCallback(async (display: Display, _sha?: string): Promise<string> => {
@@ -81,12 +91,17 @@ export function useRoles() {
 
   useEffect(() => {
     setLoading(true)
-    const unsub = FB.onRolesChange((r) => {
-      setRoles(r)
+    try {
+      const unsub = FB.onRolesChange((r) => {
+        setRoles(r)
+        setLoading(false)
+        setError(null)
+      })
+      return unsub
+    } catch (e) {
+      setError((e as Error).message)
       setLoading(false)
-      setError(null)
-    })
-    return unsub
+    }
   }, [])
 
   const save = useCallback(async (roles: string[]): Promise<void> => {
