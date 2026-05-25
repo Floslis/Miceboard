@@ -1,15 +1,20 @@
-import { useCallback, useState, useEffect, useRef, memo } from 'react'
-import type { Display, User, RemoteData } from '../../types'
+// ─────────────────────────────────────────────────────────────
+// MicBoard – DisplayView
+// Real-time display via Firebase onValue listener.
+// Slot assignments appear within ~100 ms on all connected tabs.
+// ─────────────────────────────────────────────────────────────
+
+import { useState, useEffect, memo } from 'react'
+import type { User, Display } from '../../types'
 import type { GitHubConfig } from '../../lib/github'
-import * as GH from '../../lib/github'
-import { usePolling } from '../../hooks/usePolling'
+import * as FB from '../../lib/firebase'
 import SlotCard from './SlotCard'
 
 interface Props {
-  displayId: string
-  cfg: GitHubConfig       // Must be a stable reference (memoized in parent)
-  showClock?: boolean
-  pollInterval?: number
+  displayId:     string
+  cfg:           GitHubConfig   // Still needed for image reading
+  showClock?:    boolean
+  pollInterval?: number         // Kept for API compat; unused (Firebase is real-time)
 }
 
 // Clock rendered separately so it doesn't cause slot re-renders
@@ -26,66 +31,50 @@ const Clock = memo(function Clock() {
   )
 })
 
-export default function DisplayView({ displayId, cfg, showClock = true, pollInterval = 8000 }: Props) {
-  const [display, setDisplay]     = useState<RemoteData<Display> | null>(null)
-  const [users, setUsers]         = useState<Map<string, User>>(new Map())
-  const [error, setError]         = useState<string | null>(null)
+export default function DisplayView({ displayId, cfg, showClock = true }: Props) {
+  const [display,     setDisplay]     = useState<Display | null>(null)
+  const [users,       setUsers]       = useState<Map<string, User>>(new Map())
+  const [error,       setError]       = useState<string | null>(null)
   const [isFirstLoad, setIsFirstLoad] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
-  // Track previous SHA so we skip re-renders when nothing changed
-  const prevShаRef = useRef<string>('')
-
-  const poll = useCallback(async () => {
-    // Step 1: fetch the display config (1 request).
-    // Without ?t=Date.now() the browser sends If-None-Match; GitHub returns a
-    // free 304 when nothing changed – those don't consume rate-limit quota.
-    const displayData = await GH.getDisplay(cfg, displayId)
-
-    if (displayData.sha === prevShаRef.current) {
-      // Nothing changed – skip all user fetches (saves N requests per poll)
+  // ── Subscribe to display changes (Firebase real-time) ────────
+  useEffect(() => {
+    if (!displayId) return
+    const unsub = FB.onDisplayChange(displayId, (d) => {
+      if (!d) {
+        setError(`Display "${displayId}" nicht gefunden.`)
+        setIsFirstLoad(false)
+        return
+      }
+      setDisplay(d)
       setError(null)
       setIsFirstLoad(false)
-      return
-    }
+      setLastUpdated(new Date())
+    })
+    return unsub
+  }, [displayId])
 
-    // Step 2: display changed – fetch only the users assigned to visible slots
-    // (not every user in the repo). Reduces N+1 to assigned-slot count.
-    const assignedIds = [
-      ...new Set(
-        displayData.data.slots
-          .map((s) => s.userId)
-          .filter((id): id is string => Boolean(id)),
-      ),
-    ]
-    const userMap = await GH.getUsersByIds(cfg, assignedIds)
+  // ── Subscribe to user changes (Firebase real-time) ───────────
+  useEffect(() => {
+    const unsub = FB.onUsersChange((allUsers) => {
+      const map = new Map<string, User>()
+      allUsers.forEach((u) => map.set(u.id, u))
+      setUsers(map)
+    })
+    return unsub
+  }, [])
 
-    prevShаRef.current = displayData.sha
-    setDisplay(displayData)
-    setUsers(userMap)
-    setError(null)
-    setIsFirstLoad(false)
-  // cfg and displayId are stable (memoized in DisplayPage) – safe as deps
-  }, [cfg, displayId])
-
-  const { lastUpdated, isPolling } = usePolling(poll, {
-    interval: pollInterval,
-    enabled: true,
-    // onError intentionally omitted from options object to keep it stable;
-    // usePolling stores it in a ref internally
-    onError: useCallback((err: Error) => setError(err.message), []),
-  })
-
-  const sortedSlots = display?.data.slots.slice().sort((a, b) => a.order - b.order) ?? []
+  const sortedSlots = display?.slots.slice().sort((a, b) => a.order - b.order) ?? []
   const slotCount   = sortedSlots.length
-  const gap         = display?.data.slotGap ?? 12
-  const slotWidth   = display?.data.slotWidth  // undefined = auto
+  const gap         = display?.slotGap ?? 12
+  const slotWidth   = display?.slotWidth
 
-  // Build grid-template-columns
   const gridCols = slotWidth
     ? `repeat(auto-fill, ${slotWidth}px)`
     : `repeat(${Math.max(slotCount, 1)}, 1fr)`
 
-  // ── Loading ──────────────────────────────────────────────
+  // ── Loading ──────────────────────────────────────────────────
 
   if (isFirstLoad) {
     return (
@@ -100,7 +89,7 @@ export default function DisplayView({ displayId, cfg, showClock = true, pollInte
     return (
       <div className="w-full h-full flex items-center justify-center bg-surface-900">
         <div className="text-center space-y-2">
-          <p className="text-2xl text-red-400/60">⚠</p>
+          <p className="text-2xl text-red-400/60">&#9888;</p>
           <p className="text-white/50 text-sm">{error}</p>
           <p className="text-white/25 text-xs">Display-ID: {displayId}</p>
         </div>
@@ -111,13 +100,13 @@ export default function DisplayView({ displayId, cfg, showClock = true, pollInte
   return (
     <div className="w-full h-full flex flex-col bg-surface-900 overflow-hidden">
 
-      {/* ── Thin header bar ───────────────────────────────── */}
+      {/* Thin header bar */}
       <header className="flex items-center justify-between px-4 shrink-0" style={{ height: 40 }}>
         <span className="text-white/50 text-xs font-semibold tracking-wide truncate">
-          {display?.data.name ?? displayId}
+          {display?.name ?? displayId}
         </span>
         <div className="flex items-center gap-3 shrink-0">
-          {isPolling && <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />}
+          <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" title="Live" />
           {lastUpdated && (
             <span className="text-white/25 text-xs tabular-nums">
               {lastUpdated.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -127,18 +116,11 @@ export default function DisplayView({ displayId, cfg, showClock = true, pollInte
         </div>
       </header>
 
-      {/* ── Slot grid fills everything below header ───────── */}
-      <div
-        className="flex-1 min-h-0 overflow-hidden"
-        style={{ padding: gap }}
-      >
+      {/* Slot grid fills everything below header */}
+      <div className="flex-1 min-h-0 overflow-hidden" style={{ padding: gap }}>
         <div
           className="h-full"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: gridCols,
-            gap,
-          }}
+          style={{ display: 'grid', gridTemplateColumns: gridCols, gap }}
         >
           {sortedSlots.map((slot) => (
             <SlotCard

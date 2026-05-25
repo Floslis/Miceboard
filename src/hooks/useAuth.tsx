@@ -9,6 +9,7 @@ import {
   useEffect, type ReactNode,
 } from 'react'
 import { ADMIN_PASSWORD } from '../lib/config'
+import { signInAdmin, signOutAdmin } from '../lib/firebase'
 
 const SESSION_KEY = 'micboard_auth'
 
@@ -43,13 +44,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const expected = ADMIN_PASSWORD
     if (!expected || password === expected) {
       setIsAuthenticated(true)
+      // Sign in to Firebase so write rules pass
+      signInAdmin().catch(() => { /* non-fatal if offline */ })
       return true
     }
     setError('Falsches Passwort. Bitte erneut versuchen.')
     return false
   }, [])
 
-  const logout = useCallback(() => setIsAuthenticated(false), [])
+  const logout = useCallback(() => {
+    setIsAuthenticated(false)
+    signOutAdmin().catch(() => { /* non-fatal */ })
+  }, [])
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, error, login, logout, clearError: () => setError(null) }}>

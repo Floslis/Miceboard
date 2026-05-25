@@ -3,7 +3,7 @@ import { Plus, ExternalLink, RefreshCw, Pencil, Trash2, Check, X, Monitor, UserX
 import clsx from 'clsx'
 import type { Display, Slot, User, RemoteData, DisplayAspectRatio } from '../../types'
 import type { GitHubConfig } from '../../lib/github'
-import * as GH from '../../lib/github'
+import * as FB from '../../lib/firebase'
 import SlotAssignment from './SlotAssignment'
 
 const ASPECT_RATIO_OPTIONS: DisplayAspectRatio[] = ['16:9', '21:9', '32:9']
@@ -11,7 +11,7 @@ const ASPECT_RATIO_OPTIONS: DisplayAspectRatio[] = ['16:9', '21:9', '32:9']
 interface Props {
   displayData: RemoteData<Display>
   users:       RemoteData<User>[]
-  cfg:         GitHubConfig
+  cfg:         GitHubConfig          // still needed for image reads
   onUpdated:   () => Promise<void>
   onDeleted?:  (id: string) => void
   basePath?:   string
@@ -68,17 +68,12 @@ export default function DisplayPanel({
   const currentSlots = optimisticSlots ?? display.slots
   const sortedSlots  = currentSlots.slice().sort((a, b) => a.order - b.order)
 
-  // ── SHA ref ────────────────────────────────────────────────
-  const displayShaRef = useRef(displayData.sha)
-  useEffect(() => { displayShaRef.current = displayData.sha }, [displayData.sha])
-
-  // ── Core save helper ───────────────────────────────────────
+  // ── Core save helper (Firebase – no SHA needed) ────────────
 
   const saveDisplay = useCallback(async (updated: Display) => {
-    const newSha = await GH.saveDisplay(cfg, updated, displayShaRef.current)
-    displayShaRef.current = newSha
+    await FB.saveDisplay(updated)
     await onUpdated()
-  }, [cfg, onUpdated])
+  }, [onUpdated])
 
   // ── Slot assignment (optimistic) ───────────────────────────
   // UI updates instantly; GitHub write happens in the background.
@@ -181,7 +176,7 @@ export default function DisplayPanel({
     if (!confirm(`Display „${display.name}" wirklich löschen?\nAlle Slots und Zuweisungen gehen verloren.`)) return
     setDeleting(true)
     try {
-      await GH.deleteDisplay(cfg, display.id, displayShaRef.current)
+      await FB.deleteDisplay(display.id)
       onDeleted?.(display.id)
     } catch (err) {
       alert(`Fehler beim Löschen: ${(err as Error).message}`)

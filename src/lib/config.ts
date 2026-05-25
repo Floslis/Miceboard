@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 // MicBoard – Runtime Config
-// Reads from env-vars (build-time) with localStorage override
+// Firebase handles all structured data (users, displays, etc).
+// GitHub is used only for image storage (uploadBinary / imageUrl).
 // ─────────────────────────────────────────────────────────────
 
 import type { Config } from '../types'

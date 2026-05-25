@@ -9,6 +9,7 @@ import clsx from 'clsx'
 import type { User, RemoteData, Display, DisplayAspectRatio } from '../../types'
 import type { GitHubConfig } from '../../lib/github'
 import * as GH from '../../lib/github'
+import * as FB from '../../lib/firebase'
 import {
   fileToWebP,
   isValidImageFile,
@@ -273,7 +274,7 @@ export default function UserEditor({ existing, cfg, displays = [], roles = [], o
     setError(null)
     setSaving(true)
     try {
-      await GH.saveUser(cfg, form, existing?.sha)
+      await FB.saveUser(form)
       onSaved(form)
     } catch (err) {
       setError((err as Error).message)
@@ -289,7 +290,7 @@ export default function UserEditor({ existing, cfg, displays = [], roles = [], o
     if (!confirm(`Nutzer „${form.displayName}" wirklich löschen?`)) return
     setDeleting(true)
     try {
-      await GH.deleteUser(cfg, form.id, existing.sha)
+      await FB.deleteUser(form.id)
       onDeleted?.()
     } catch (err) {
       setError((err as Error).message)

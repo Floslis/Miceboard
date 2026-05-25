@@ -36,12 +36,15 @@ jobs:
 
       - name: Build
         env:
-          VITE_GITHUB_TOKEN:   ${{ secrets.VITE_GITHUB_TOKEN }}
-          VITE_GITHUB_OWNER:   ${{ secrets.VITE_GITHUB_OWNER }}
-          VITE_DATA_REPO:      ${{ secrets.VITE_DATA_REPO }}
-          VITE_DATA_BRANCH:    ${{ secrets.VITE_DATA_BRANCH }}
-          VITE_ADMIN_PASSWORD: ${{ secrets.VITE_ADMIN_PASSWORD }}
-          VITE_BASE_PATH:      ${{ vars.VITE_BASE_PATH || '/' }}
+          VITE_GITHUB_TOKEN:          ${{ secrets.VITE_GITHUB_TOKEN }}
+          VITE_GITHUB_OWNER:          ${{ secrets.VITE_GITHUB_OWNER }}
+          VITE_DATA_REPO:             ${{ secrets.VITE_DATA_REPO }}
+          VITE_DATA_BRANCH:           ${{ secrets.VITE_DATA_BRANCH }}
+          VITE_ADMIN_PASSWORD:        ${{ secrets.VITE_ADMIN_PASSWORD }}
+          VITE_FIREBASE_API_KEY:      ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_PROJECT_ID:   ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL }}
+          VITE_BASE_PATH:             ${{ vars.VITE_BASE_PATH || '/' }}
         run: npm run build
 
       - name: Setup Pages

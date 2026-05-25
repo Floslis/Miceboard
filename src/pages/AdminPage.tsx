@@ -12,8 +12,10 @@ import {
 import clsx from 'clsx'
 import type { User, Display, RemoteData } from '../types'
 import { useAuth } from '../hooks/useAuth'
-import { useGitHubConfig, useUsers, useDisplays, useRoles } from '../hooks/useGitHub'
+import { useUsers, useDisplays, useRoles } from '../hooks/useFirebase'
+import { useGitHubConfig } from '../hooks/useGitHub'
 import { loadConfig } from '../lib/config'
+import * as FB from '../lib/firebase'
 import * as GH from '../lib/github'
 import { fileToWebP, isValidImageFile } from '../lib/imageUtils'
 import { useLogo, LOGO_PATH } from '../hooks/useLogo'
@@ -119,12 +121,9 @@ function DisplayOverviewCard({
   const assignedCount = currentSlots.filter((s) => s.userId).length
 
   const [clearingAll, setClearingAll] = useState(false)
-  const shaRef = useRef(displayData.sha)
-  useEffect(() => { shaRef.current = displayData.sha }, [displayData.sha])
 
   const saveAll = async (updated: Display) => {
-    const newSha = await GH.saveDisplay(cfg, updated, shaRef.current)
-    shaRef.current = newSha
+    await FB.saveDisplay(updated)
     await onUpdated()
   }
 
@@ -345,9 +344,9 @@ export default function AdminPage() {
   const { logout }                  = useAuth()
   const cfg                         = useGitHubConfig()
   const logoUrl                     = useLogo(cfg)
-  const { users, loading: ul, error: ue, reload: reloadUsers, save: saveUser, remove: removeUser } = useUsers(cfg)
-  const { displays, loading: dl, error: de, reload: reloadDisplays } = useDisplays(cfg)
-  const { roles, save: saveRoles, reload: reloadRoles } = useRoles(cfg)
+  const { users, loading: ul, error: ue, reload: reloadUsers, save: saveUser, remove: removeUser } = useUsers()
+  const { displays, loading: dl, error: de, reload: reloadDisplays } = useDisplays()
+  const { roles, save: saveRoles, reload: reloadRoles } = useRoles()
 
   const [section, setSection]           = useState<Section>('overview')
   const [overviewMode, setOverviewMode] = useState<'tile' | 'list'>('tile')
@@ -372,82 +371,58 @@ export default function AdminPage() {
   // ── Add display ──────────────────────────────────────────
 
   const addDisplay = useCallback(async () => {
-    if (!cfg) return
     const name = prompt('Display-Name (z. B. Hauptbühne):')
     if (!name) return
     const id = 'display-' + Date.now().toString(36)
     const newDisplay: Display = { id, name: name.trim(), slots: [], layout: 'grid' }
     try {
-      await GH.saveDisplay(cfg, newDisplay)
-      await reloadDisplays()
+      await FB.saveDisplay(newDisplay)
       setActiveDisplayId(id)
       toast.success(`Display „${name}" erstellt.`)
     } catch (err) {
       toast.error((err as Error).message)
     }
-  }, [cfg, reloadDisplays, toast])
+  }, [toast])
 
-  // ── Display updated (slot assignment / rename changed) ──────
+  // ── Display updated – no-op with Firebase (listener auto-updates) ──
 
-  const handleDisplayUpdated = useCallback(async () => {
-    await reloadDisplays()
-  }, [reloadDisplays])
+  const handleDisplayUpdated = useCallback(async () => {}, [])
 
   // ── Display deleted ──────────────────────────────────────
 
   const handleDisplayDeleted = useCallback((deletedId: string) => {
-    // Move selection to another display (or null)
     if (activeDisplayId === deletedId) {
       const remaining = displays.filter((d) => d.data.id !== deletedId)
       setActiveDisplayId(remaining.length > 0 ? remaining[0].data.id : null)
     }
-    reloadDisplays()
     toast.success('Display gelöscht.')
-  }, [activeDisplayId, displays, reloadDisplays, toast])
+  }, [activeDisplayId, displays, toast])
 
-  // ── Repo reset ───────────────────────────────────────────
+  // ── Reset all data ───────────────────────────────────────
 
   const [resetting, setResetting] = useState(false)
 
   const handleRepoReset = useCallback(async () => {
-    if (!cfg) return
     const confirmed = confirm(
-      '⚠️ ALLE Nutzer, Displays und Bilder werden unwiderruflich gelöscht!\n' +
-      'Das Repo wird danach mit Standard-Daten neu initialisiert.\n\n' +
+      '⚠️ ALLE Nutzer und Displays werden unwiderruflich gelöscht!\n\n' +
       'Wirklich fortfahren?',
     )
     if (!confirmed) return
     setResetting(true)
     try {
-      await GH.resetDataRepo(cfg)
-      await Promise.all([reloadDisplays(), reloadUsers()])
+      // Delete all users and displays from Firebase
+      await Promise.all([
+        ...users.map((u) => FB.deleteUser(u.data.id)),
+        ...displays.map((d) => FB.deleteDisplay(d.data.id)),
+      ])
       setActiveDisplayId(null)
-      toast.success('Repo zurückgesetzt und neu initialisiert.')
+      toast.success('Alle Daten gelöscht.')
     } catch (err) {
       toast.error(`Fehler beim Reset: ${(err as Error).message}`)
     } finally {
       setResetting(false)
     }
-  }, [cfg, reloadDisplays, reloadUsers, toast])
-
-  // ── Auto-refresh when tab becomes visible again ──────────
-  // Ensures the admin shows fresh data after the user switches tabs
-  // or comes back from the display page.
-
-  const lastLoadRef = useRef(0)
-  useEffect(() => {
-    const handleVisible = () => {
-      if (document.visibilityState !== 'visible') return
-      if (Date.now() - lastLoadRef.current < 15_000) return  // debounce 15 s
-      lastLoadRef.current = Date.now()
-      reloadDisplays()
-      reloadUsers()
-    }
-    document.addEventListener('visibilitychange', handleVisible)
-    return () => document.removeEventListener('visibilitychange', handleVisible)
-  }, [reloadDisplays, reloadUsers])
-
-  useEffect(() => { lastLoadRef.current = Date.now() }, [])
+  }, [users, displays, toast])
 
   // ── User saved ───────────────────────────────────────────
 
