@@ -7,7 +7,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Mic, Users, Monitor, Settings, LogOut, Plus, RefreshCw,
   Upload, X, LayoutDashboard, ChevronRight, AlertTriangle,
-  LayoutGrid, List as ListIcon, ExternalLink,
+  LayoutGrid, List as ListIcon, ExternalLink, UserX,
 } from 'lucide-react'
 import clsx from 'clsx'
 import type { User, Display, RemoteData } from '../types'
@@ -112,19 +112,21 @@ function DisplayOverviewCard({
 }) {
   const display     = displayData.data
   const sorted      = display.slots.slice().sort((a, b) => a.order - b.order)
-  const [saving, setSaving] = useState<string | null>(null)
+  const [saving, setSaving]         = useState<string | null>(null)
+  const [clearingAll, setClearingAll] = useState(false)
   const shaRef = useRef(displayData.sha)
   useEffect(() => { shaRef.current = displayData.sha }, [displayData.sha])
+
+  const saveAll = async (updated: Display) => {
+    const newSha = await GH.saveDisplay(cfg, updated, shaRef.current)
+    shaRef.current = newSha
+    await onUpdated()
+  }
 
   const handleAssign = async (slotId: string, userId: string | undefined) => {
     setSaving(slotId)
     try {
-      const newSha = await GH.saveDisplay(cfg, {
-        ...display,
-        slots: display.slots.map((s) => s.id === slotId ? { ...s, userId } : s),
-      }, shaRef.current)
-      shaRef.current = newSha
-      await onUpdated()
+      await saveAll({ ...display, slots: display.slots.map((s) => s.id === slotId ? { ...s, userId } : s) })
     } catch (err) {
       alert(`Fehler: ${(err as Error).message}`)
     } finally {
@@ -132,7 +134,22 @@ function DisplayOverviewCard({
     }
   }
 
-  const displayUrl = `${basePath}display/${display.id}`
+  const handleClearAll = async () => {
+    const assigned = display.slots.filter((s) => s.userId)
+    if (assigned.length === 0) { alert('Alle Slots sind bereits leer.'); return }
+    if (!confirm(`Alle ${assigned.length} Zuweisung${assigned.length !== 1 ? 'en' : ''} aufheben?`)) return
+    setClearingAll(true)
+    try {
+      await saveAll({ ...display, slots: display.slots.map((s) => ({ ...s, userId: undefined })) })
+    } catch (err) {
+      alert(`Fehler: ${(err as Error).message}`)
+    } finally {
+      setClearingAll(false)
+    }
+  }
+
+  const displayUrl   = `${basePath}display/${display.id}`
+  const assignedCount = display.slots.filter((s) => s.userId).length
 
   return (
     <div className="bg-surface-800 border border-white/10 rounded-2xl overflow-hidden">
@@ -143,10 +160,26 @@ function DisplayOverviewCard({
           <span className="font-semibold text-white">{display.name}</span>
           <span className="text-white/30 text-xs">{sorted.length} Slots</span>
         </div>
-        <a href={displayUrl} target="_blank" rel="noreferrer"
-          className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
-          öffnen <ExternalLink className="w-3 h-3" />
-        </a>
+        <div className="flex items-center gap-2">
+          {assignedCount > 0 && (
+            <button
+              onClick={handleClearAll}
+              disabled={clearingAll}
+              title="Alle Zuweisungen aufheben"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-white/40 hover:bg-amber-500/10 hover:text-amber-400 border border-transparent hover:border-amber-500/30 transition-colors disabled:opacity-40 text-xs font-medium"
+            >
+              {clearingAll
+                ? <div className="w-3.5 h-3.5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                : <UserX className="w-3.5 h-3.5" />
+              }
+              Alle leeren
+            </button>
+          )}
+          <a href={displayUrl} target="_blank" rel="noreferrer"
+            className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
+            öffnen <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
       </div>
 
       {/* Tile view */}
