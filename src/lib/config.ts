@@ -17,6 +17,15 @@ const ENV: Partial<Config> = {
 }
 
 export function loadConfig(): Config | null {
+  // If all required env-vars are present, treat them as the single source of
+  // truth and ignore any localStorage override. This ensures that updating a
+  // GitHub Secret and redeploying immediately takes effect – no stale token
+  // from a previous manual setup can shadow the build-time configuration.
+  if (ENV.token && ENV.owner && ENV.dataRepo) {
+    return ENV as Config
+  }
+
+  // No env-vars → fall back to whatever the user saved via the Setup page.
   try {
     const raw = localStorage.getItem(LS_KEY)
     if (raw) {
@@ -26,10 +35,6 @@ export function loadConfig(): Config | null {
     }
   } catch { /* ignore */ }
 
-  // Fall back to pure env-var config
-  if (ENV.token && ENV.owner && ENV.dataRepo) {
-    return ENV as Config
-  }
   return null
 }
 
