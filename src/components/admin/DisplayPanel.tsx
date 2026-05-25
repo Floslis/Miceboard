@@ -80,7 +80,13 @@ export default function DisplayPanel({
   // On failure the optimistic state is cleared (rollback).
 
   const handleAssign = useCallback(async (slotId: string, userId: string | undefined) => {
-    const newSlots = display.slots.map((s) => s.id === slotId ? { ...s, userId } : s)
+    const newSlots = display.slots.map((s) => {
+      if (s.id !== slotId) return s
+      // Never spread `userId: undefined` — Firebase rejects it.
+      // Destructure it out, then re-add only when defined.
+      const { userId: _removed, ...rest } = s
+      return userId !== undefined ? { ...rest, userId } : rest
+    })
     setOptimisticSlots(newSlots)
     try {
       await saveDisplay({ ...display, slots: newSlots })
@@ -132,7 +138,8 @@ export default function DisplayPanel({
     const assigned = currentSlots.filter((s) => s.userId)
     if (assigned.length === 0) { alert('Alle Slots sind bereits leer.'); return }
     if (!confirm(`Alle ${assigned.length} Zuweisung${assigned.length !== 1 ? 'en' : ''} aufheben?`)) return
-    const cleared = display.slots.map((s) => ({ ...s, userId: undefined }))
+    // Destructure userId out so the key is absent entirely — Firebase rejects undefined values.
+    const cleared = display.slots.map(({ userId: _removed, ...rest }) => rest)
     setOptimisticSlots(cleared)
     setClearingAll(true)
     try {
