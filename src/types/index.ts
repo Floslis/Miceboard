@@ -17,6 +17,7 @@ export interface User {
   tags?: string[]          // Optional labels: ["worship", "tech"]
   role?: string            // Optional role description
   active?: boolean         // Whether the user is currently available
+  temporary?: boolean      // If true: auto-deleted when unassigned from all slots
   createdAt?: string       // ISO date string
   updatedAt?: string
 }

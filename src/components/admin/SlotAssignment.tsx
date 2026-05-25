@@ -6,7 +6,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Search, X, UserX, UserMinus, UserPlus } from 'lucide-react'
+import { Search, X, UserX, UserMinus, UserPlus, Clock } from 'lucide-react'
 import clsx from 'clsx'
 import type { User, Slot, RemoteData } from '../../types'
 import type { GitHubConfig } from '../../lib/github'
@@ -19,7 +19,7 @@ interface Props {
   users:        RemoteData<User>[]
   cfg:          GitHubConfig
   onAssign:     (slotId: string, userId: string | undefined) => Promise<void>
-  onQuickAdd?:  (slotId: string, name: string) => Promise<void>
+  onQuickAdd?:  (slotId: string, name: string, temporary?: boolean) => Promise<void>
   saving?:      boolean
 }
 
@@ -55,7 +55,7 @@ function UserAvatar({ user, cfg }: { user: User; cfg: GitHubConfig }) {
 export default function SlotAssignment({ slot, users, cfg, onAssign, onQuickAdd, saving }: Props) {
   const [open, setOpen]         = useState(false)
   const [query, setQuery]       = useState('')
-  const [adding, setAdding]     = useState(false)
+  const [adding, setAdding]     = useState<'normal' | 'temp' | null>(null)
   const inputRef                = useRef<HTMLInputElement>(null)
 
   const assigned  = users.find((u) => u.data.id === slot.userId)?.data
@@ -93,14 +93,14 @@ export default function SlotAssignment({ slot, users, cfg, onAssign, onQuickAdd,
     await onAssign(slot.id, userId)
   }
 
-  const quickAdd = async () => {
+  const quickAdd = async (temporary = false) => {
     if (!onQuickAdd || !query.trim()) return
-    setAdding(true)
+    setAdding(temporary ? 'temp' : 'normal')
     try {
-      await onQuickAdd(slot.id, query.trim())
+      await onQuickAdd(slot.id, query.trim(), temporary)
       setOpen(false)
     } finally {
-      setAdding(false)
+      setAdding(null)
     }
   }
 
@@ -143,7 +143,7 @@ export default function SlotAssignment({ slot, users, cfg, onAssign, onQuickAdd,
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Person suchen …"
-              onKeyDown={(e) => { if (e.key === 'Enter' && query.trim() && onQuickAdd) quickAdd() }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && query.trim() && onQuickAdd) quickAdd(false) }}
               className="flex-1 bg-transparent text-white placeholder-white/30 text-sm outline-none"
             />
             {query && (
@@ -171,21 +171,40 @@ export default function SlotAssignment({ slot, users, cfg, onAssign, onQuickAdd,
 
             {/* Quick-add: shown whenever there is a search query */}
             {query.trim() && onQuickAdd && (
-              <button
-                onClick={quickAdd}
-                disabled={adding}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-brand-600/15 border-b border-white/5 text-left transition-colors disabled:opacity-50"
-              >
-                <div className="w-10 h-10 rounded-full bg-brand-600/20 border border-brand-500/30 flex items-center justify-center shrink-0">
-                  {adding
-                    ? <div className="w-4 h-4 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
-                    : <UserPlus className="w-4 h-4 text-brand-400" />}
-                </div>
-                <div>
-                  <p className="text-sm text-brand-300 font-semibold">„{query.trim()}" anlegen & zuweisen</p>
-                  <p className="text-xs text-white/30">Nutzer ohne Foto · später im Nutzer-Tab vervollständigen</p>
-                </div>
-              </button>
+              <div className="border-b border-white/5">
+                {/* Permanent quick-add */}
+                <button
+                  onClick={() => quickAdd(false)}
+                  disabled={adding !== null}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-brand-600/15 text-left transition-colors disabled:opacity-50"
+                >
+                  <div className="w-10 h-10 rounded-full bg-brand-600/20 border border-brand-500/30 flex items-center justify-center shrink-0">
+                    {adding === 'normal'
+                      ? <div className="w-4 h-4 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
+                      : <UserPlus className="w-4 h-4 text-brand-400" />}
+                  </div>
+                  <div>
+                    <p className="text-sm text-brand-300 font-semibold">„{query.trim()}" anlegen & zuweisen</p>
+                    <p className="text-xs text-white/30">Bleibt im Nutzer-Tab · kann mit Foto vervollständigt werden</p>
+                  </div>
+                </button>
+                {/* Temporary quick-add */}
+                <button
+                  onClick={() => quickAdd(true)}
+                  disabled={adding !== null}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-amber-500/10 text-left transition-colors disabled:opacity-50"
+                >
+                  <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0">
+                    {adding === 'temp'
+                      ? <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                      : <Clock className="w-4 h-4 text-amber-400" />}
+                  </div>
+                  <div>
+                    <p className="text-sm text-amber-300 font-semibold">„{query.trim()}" temporär zuweisen</p>
+                    <p className="text-xs text-white/30">Wird automatisch gelöscht wenn der Slot geleert wird</p>
+                  </div>
+                </button>
+              </div>
             )}
 
             {/* Users */}

@@ -129,16 +129,33 @@ function DisplayOverviewCard({
 
   // Optimistic assign: UI updates instantly, API write in background
   const handleAssign = async (slotId: string, userId: string | undefined) => {
-    const newSlots = display.slots.map((s) => s.id === slotId ? { ...s, userId } : s)
+    // Auto-delete temporary users when unassigned or replaced
+    const prevSlot   = display.slots.find((s) => s.id === slotId)
+    const prevUserId = prevSlot?.userId
+    const prevUser   = prevUserId ? users.find((u) => u.data.id === prevUserId)?.data : undefined
+    const shouldDelete = prevUser?.temporary && prevUserId !== userId
+
+    const newSlots = display.slots.map((s) => {
+      if (s.id !== slotId) return s
+      const { userId: _removed, ...rest } = s
+      return userId !== undefined ? { ...rest, userId } : rest
+    })
     setOptimisticSlots(newSlots)
     try {
       await saveAll({ ...display, slots: newSlots })
+      if (shouldDelete && prevUserId) await FB.deleteUser(prevUserId)
     } catch (err) {
-      setOptimisticSlots(null) // rollback
+      setOptimisticSlots(null)
       alert(`Fehler: ${(err as Error).message}`)
     } finally {
       setOptimisticSlots(null)
     }
+  }
+
+  const handleQuickAdd = async (slotId: string, name: string, temporary = false) => {
+    const id = 'user-' + Date.now().toString(36)
+    await FB.saveUser({ id, displayName: name, fullName: name, active: true, temporary, createdAt: new Date().toISOString() })
+    await handleAssign(slotId, id)
   }
 
   // Optimistic clear-all
@@ -146,13 +163,17 @@ function DisplayOverviewCard({
     const assigned = currentSlots.filter((s) => s.userId)
     if (assigned.length === 0) { alert('Alle Slots sind bereits leer.'); return }
     if (!confirm(`Alle ${assigned.length} Zuweisung${assigned.length !== 1 ? 'en' : ''} aufheben?`)) return
-    const cleared = display.slots.map((s) => ({ ...s, userId: undefined }))
+    const tempUserIds = assigned
+      .map((s) => s.userId)
+      .filter((id) => id && users.find((u) => u.data.id === id)?.data.temporary) as string[]
+    const cleared = display.slots.map(({ userId: _r, ...rest }) => rest)
     setOptimisticSlots(cleared)
     setClearingAll(true)
     try {
       await saveAll({ ...display, slots: cleared })
+      await Promise.all(tempUserIds.map((id) => FB.deleteUser(id)))
     } catch (err) {
-      setOptimisticSlots(null) // rollback
+      setOptimisticSlots(null)
       alert(`Fehler: ${(err as Error).message}`)
     } finally {
       setClearingAll(false)
@@ -209,6 +230,7 @@ function DisplayOverviewCard({
                   users={users}
                   cfg={cfg}
                   onAssign={handleAssign}
+                  onQuickAdd={handleQuickAdd}
                   saving={false}
                 />
               </div>

@@ -80,30 +80,35 @@ export default function DisplayPanel({
   // On failure the optimistic state is cleared (rollback).
 
   const handleAssign = useCallback(async (slotId: string, userId: string | undefined) => {
+    // If the previous occupant was a temporary user and is being replaced/removed → delete them
+    const prevSlot   = display.slots.find((s) => s.id === slotId)
+    const prevUserId = prevSlot?.userId
+    const prevUser   = prevUserId ? users.find((u) => u.data.id === prevUserId)?.data : undefined
+    const shouldDelete = prevUser?.temporary && prevUserId !== userId
+
     const newSlots = display.slots.map((s) => {
       if (s.id !== slotId) return s
-      // Never spread `userId: undefined` — Firebase rejects it.
-      // Destructure it out, then re-add only when defined.
       const { userId: _removed, ...rest } = s
       return userId !== undefined ? { ...rest, userId } : rest
     })
     setOptimisticSlots(newSlots)
     try {
       await saveDisplay({ ...display, slots: newSlots })
+      if (shouldDelete && prevUserId) await FB.deleteUser(prevUserId)
     } catch (err) {
       alert(`Fehler beim Zuweisen: ${(err as Error).message}`)
     } finally {
       setOptimisticSlots(null)
     }
-  }, [display, saveDisplay])
+  }, [display, users, saveDisplay])
 
   // ── Quick-add user ─────────────────────────────────────────
   // Creates a minimal User (name only, no photo) and immediately assigns them.
   // The new user appears in the Users tab and can be completed later.
 
-  const handleQuickAdd = useCallback(async (slotId: string, name: string) => {
+  const handleQuickAdd = useCallback(async (slotId: string, name: string, temporary = false) => {
     const id = 'user-' + Date.now().toString(36)
-    await FB.saveUser({ id, displayName: name, fullName: name, active: true, createdAt: new Date().toISOString() })
+    await FB.saveUser({ id, displayName: name, fullName: name, active: true, temporary, createdAt: new Date().toISOString() })
     const newSlots = display.slots.map((s) => {
       if (s.id !== slotId) return s
       const { userId: _removed, ...rest } = s
