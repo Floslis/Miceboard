@@ -12,7 +12,7 @@ import {
 import clsx from 'clsx'
 import type { User, Display, RemoteData } from '../types'
 import { useAuth } from '../hooks/useAuth'
-import { useGitHubConfig, useUsers, useDisplays } from '../hooks/useGitHub'
+import { useGitHubConfig, useUsers, useDisplays, useRoles } from '../hooks/useGitHub'
 import { loadConfig, saveConfig, clearConfig } from '../lib/config'
 import * as GH from '../lib/github'
 import { fileToWebP, isValidImageFile } from '../lib/imageUtils'
@@ -242,12 +242,100 @@ function DisplayOverviewCard({
   )
 }
 
+// ── Roles editor (used in Settings) ──────────────────────────
+
+function RolesEditor({
+  roles, onSave, onReload,
+}: {
+  roles:    string[]
+  onSave:   (roles: string[]) => Promise<void>
+  onReload: () => Promise<void>
+}) {
+  const [draft, setDraft]   = useState('')
+  const [saving, setSaving] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const add = async () => {
+    const name = draft.trim()
+    if (!name || roles.includes(name)) return
+    setSaving(true)
+    try { await onSave([...roles, name]); setDraft('') } catch (e) { alert((e as Error).message) } finally { setSaving(false) }
+  }
+
+  const remove = async (role: string) => {
+    if (!confirm(`Rolle „${role}" wirklich löschen?\nNutzer mit dieser Rolle behalten ihren Wert, aber die Rolle steht nicht mehr zur Auswahl.`)) return
+    setSaving(true)
+    try { await onSave(roles.filter((r) => r !== role)) } catch (e) { alert((e as Error).message) } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="bg-surface-800 border border-white/10 rounded-2xl p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-white/70 uppercase tracking-wider">Rollen</p>
+        <button onClick={onReload} className="p-1.5 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors" title="Neu laden">
+          <RefreshCw className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      <p className="text-xs text-white/35">
+        Hier definierst du, welche Rollen bei Nutzern auswählbar sind (z. B. Prediger, Worship, Vox).
+      </p>
+
+      {/* Existing roles */}
+      {roles.length === 0 ? (
+        <p className="text-xs text-white/25 italic">Noch keine Rollen angelegt.</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {roles.map((role) => (
+            <div key={role} className="flex items-center gap-1.5 bg-surface-700 border border-white/10 rounded-xl px-3 py-1.5">
+              <span className="text-sm text-white/80">{role}</span>
+              <button
+                onClick={() => remove(role)}
+                disabled={saving}
+                className="text-white/25 hover:text-red-400 transition-colors disabled:opacity-40"
+                title="Löschen"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add new role */}
+      <div className="flex gap-2">
+        <input
+          ref={inputRef}
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') add() }}
+          placeholder="Neue Rolle (z. B. Prediger)"
+          disabled={saving}
+          className="flex-1 bg-surface-700 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/25 focus:outline-none focus:border-brand-500 transition-colors disabled:opacity-50"
+        />
+        <button
+          onClick={add}
+          disabled={!draft.trim() || saving}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm transition-colors disabled:opacity-40"
+        >
+          {saving
+            ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            : <Plus className="w-4 h-4" />
+          }
+          Hinzufügen
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminPage() {
   const { logout }                  = useAuth()
   const cfg                         = useGitHubConfig()
   const logoUrl                     = useLogo(cfg)
   const { users, loading: ul, error: ue, reload: reloadUsers, save: saveUser, remove: removeUser } = useUsers(cfg)
   const { displays, loading: dl, error: de, reload: reloadDisplays } = useDisplays(cfg)
+  const { roles, save: saveRoles, reload: reloadRoles } = useRoles(cfg)
 
   const [section, setSection]           = useState<Section>('overview')
   const [overviewMode, setOverviewMode] = useState<'tile' | 'list'>('tile')
@@ -635,6 +723,7 @@ export default function AdminPage() {
               existing={editingUser === 'new' ? undefined : editingUser}
               cfg={cfg}
               displays={displays}
+              roles={roles}
               onSaved={handleUserSaved}
               onDeleted={editingUser !== 'new' ? handleUserDeleted : undefined}
               onCancel={() => setEditingUser(null)}
@@ -648,6 +737,10 @@ export default function AdminPage() {
             <h2 className="text-xl font-bold text-white mb-6">Einstellungen</h2>
 
             <div className="max-w-lg space-y-5">
+
+              {/* ── Rollen ── */}
+              <RolesEditor roles={roles} onSave={saveRoles} onReload={reloadRoles} />
+
               {/* Logo upload */}
               <div className="bg-surface-800 border border-white/10 rounded-2xl p-5 space-y-4">
                 <p className="text-sm font-semibold text-white/70 uppercase tracking-wider">Logo</p>

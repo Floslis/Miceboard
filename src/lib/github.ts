@@ -252,6 +252,27 @@ export async function listDisplays(cfg: GitHubConfig): Promise<RemoteData<Displa
     .map((r) => r.value)
 }
 
+// ── Roles ────────────────────────────────────────────────────
+
+const ROLES_PATH = 'config/roles.json'
+
+/** Load the role list. Returns an empty list if the file doesn't exist yet. */
+export async function loadRoles(cfg: GitHubConfig): Promise<RemoteData<string[]>> {
+  try {
+    return await getFile<string[]>(cfg, ROLES_PATH)
+  } catch {
+    return { data: [], sha: '', path: ROLES_PATH }
+  }
+}
+
+export async function saveRoles(
+  cfg: GitHubConfig,
+  roles: string[],
+  sha?: string,
+): Promise<string> {
+  return putFile<string[]>(cfg, ROLES_PATH, roles, sha || undefined, 'chore: update roles')
+}
+
 export async function getSettings(cfg: GitHubConfig) {
   try {
     return await getFile<AppSettings>(cfg, 'config/settings.json')

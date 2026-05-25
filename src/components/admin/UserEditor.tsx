@@ -22,6 +22,7 @@ interface Props {
   existing?:  RemoteData<User>
   cfg:        GitHubConfig
   displays?:  RemoteData<Display>[]   // for slot preview
+  roles?:     string[]                // predefined roles from settings
   onSaved:    (user: User) => void
   onDeleted?: () => void
   onCancel:   () => void
@@ -175,7 +176,7 @@ function Toggle({
 
 // ── Main component ─────────────────────────────────────────────
 
-export default function UserEditor({ existing, cfg, displays = [], onSaved, onDeleted, onCancel }: Props) {
+export default function UserEditor({ existing, cfg, displays = [], roles = [], onSaved, onDeleted, onCancel }: Props) {
   const isNew = !existing
 
   const [form, setForm] = useState<User>(
@@ -353,13 +354,29 @@ export default function UserEditor({ existing, cfg, displays = [], onSaved, onDe
               <span className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-1.5 block">
                 Rolle (optional)
               </span>
-              <input
-                type="text"
-                value={form.role ?? ''}
-                onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}
-                placeholder="z. B. Prediger, Worship, Moderator"
-                className="w-full bg-surface-700 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors"
-              />
+              {roles.length > 0 ? (
+                <div className="relative">
+                  <select
+                    value={form.role ?? ''}
+                    onChange={(e) => setForm((p) => ({ ...p, role: e.target.value || undefined }))}
+                    className="w-full appearance-none bg-surface-700 border border-white/10 rounded-xl px-4 py-3 pr-10 text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors"
+                  >
+                    <option value="">— Keine Rolle —</option>
+                    {roles.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={form.role ?? ''}
+                  onChange={(e) => setForm((p) => ({ ...p, role: e.target.value || undefined }))}
+                  placeholder="Noch keine Rollen – in Einstellungen anlegen"
+                  className="w-full bg-surface-700 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors"
+                />
+              )}
             </label>
           </div>
 

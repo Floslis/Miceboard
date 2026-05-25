@@ -125,6 +125,43 @@ export function useDisplays(cfg: GitHubConfig | null) {
   return { displays, loading, error, reload: load, save, remove }
 }
 
+export function useRoles(cfg: GitHubConfig | null) {
+  const empty: import('../types').RemoteData<string[]> = { data: [], sha: '', path: 'config/roles.json' }
+  const [rolesData, setRolesData] = useState(empty)
+  const [loading, setLoading]     = useState(false)
+  const [error, setError]         = useState<string | null>(null)
+
+  const cfgKey = cfg ? `${cfg.token}|${cfg.owner}|${cfg.repo}|${cfg.branch}` : null
+  const shaRef = useRef<string | undefined>(undefined)
+  useEffect(() => { shaRef.current = rolesData.sha || undefined }, [rolesData.sha])
+
+  const load = useCallback(async () => {
+    if (!cfg) return
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await GH.loadRoles(cfg)
+      setRolesData(result)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cfgKey])
+
+  useEffect(() => { load() }, [load])
+
+  const save = useCallback(async (roles: string[]): Promise<void> => {
+    if (!cfg) throw new Error('Nicht konfiguriert')
+    const sha = await GH.saveRoles(cfg, roles, shaRef.current)
+    setRolesData({ data: roles, sha, path: 'config/roles.json' })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cfgKey])
+
+  return { roles: rolesData.data, loading, error, reload: load, save }
+}
+
 export function useSettings(cfg: GitHubConfig | null) {
   const [settings, setSettings] = useState<RemoteData<AppSettings> | null>(null)
   const [loading, setLoading]   = useState(false)
