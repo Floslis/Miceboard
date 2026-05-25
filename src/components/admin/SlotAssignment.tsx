@@ -107,7 +107,11 @@ export default function SlotAssignment({ slot, users, cfg, onAssign, saving }: P
       ) return
       setOpen(false)
     }
-    const onScroll = () => setOpen(false)
+    // Only close on scroll events that happen OUTSIDE the dropdown itself
+    const onScroll = (e: Event) => {
+      if (dropdownRef.current?.contains(e.target as Node)) return
+      setOpen(false)
+    }
     document.addEventListener('mousedown', onDown)
     window.addEventListener('scroll', onScroll, true)
     return () => {
