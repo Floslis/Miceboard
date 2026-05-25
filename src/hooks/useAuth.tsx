@@ -39,6 +39,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch { /* ignore */ }
   }, [isAuthenticated])
 
+  // On every page load: if already authenticated, re-establish Firebase auth.
+  // Firebase Anonymous Auth does not survive a full page reload unless we call
+  // signInAnonymously() again — sessionStorage remembers our app state but not
+  // the Firebase session.
+  useEffect(() => {
+    if (isAuthenticated) {
+      signInAdmin().catch(() => { /* non-fatal */ })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // intentionally only on mount
+
   const login = useCallback((password: string): boolean => {
     setError(null)
     const expected = ADMIN_PASSWORD
