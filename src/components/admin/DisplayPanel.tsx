@@ -54,13 +54,19 @@ export default function DisplayPanel({
   displayData, users, cfg, onUpdated, onDeleted, basePath = '/',
 }: Props) {
   const display     = displayData.data
-  const sortedSlots = display.slots.slice().sort((a, b) => a.order - b.order)
 
   const [savingSlot, setSavingSlot]                 = useState<string | null>(null)
   const [editingDisplayName, setEditingDisplayName] = useState(false)
   const [refreshing, setRefreshing]                 = useState(false)
   const [deleting, setDeleting]                     = useState(false)
   const [clearingAll, setClearingAll]               = useState(false)
+
+  // Optimistic slots: shown immediately, cleared after API confirms or rolls back
+  const [optimisticSlots, setOptimisticSlots]       = useState<typeof display.slots | null>(null)
+
+  // Always render from optimistic state if available, fall back to server data
+  const currentSlots = optimisticSlots ?? display.slots
+  const sortedSlots  = currentSlots.slice().sort((a, b) => a.order - b.order)
 
   // ── SHA ref ────────────────────────────────────────────────
   const displayShaRef = useRef(displayData.sha)
@@ -74,19 +80,19 @@ export default function DisplayPanel({
     await onUpdated()
   }, [cfg, onUpdated])
 
-  // ── Slot assignment ────────────────────────────────────────
+  // ── Slot assignment (optimistic) ───────────────────────────
+  // UI updates instantly; GitHub write happens in the background.
+  // On failure the optimistic state is cleared (rollback).
 
   const handleAssign = useCallback(async (slotId: string, userId: string | undefined) => {
-    setSavingSlot(slotId)
+    const newSlots = display.slots.map((s) => s.id === slotId ? { ...s, userId } : s)
+    setOptimisticSlots(newSlots)
     try {
-      await saveDisplay({
-        ...display,
-        slots: display.slots.map((s) => s.id === slotId ? { ...s, userId } : s),
-      })
+      await saveDisplay({ ...display, slots: newSlots })
     } catch (err) {
       alert(`Fehler beim Zuweisen: ${(err as Error).message}`)
     } finally {
-      setSavingSlot(null)
+      setOptimisticSlots(null)
     }
   }, [display, saveDisplay])
 
@@ -128,21 +134,22 @@ export default function DisplayPanel({
   // ── Clear all slot assignments ─────────────────────────────
 
   const handleClearAllSlots = useCallback(async () => {
-    const assigned = display.slots.filter((s) => s.userId)
+    const assigned = currentSlots.filter((s) => s.userId)
     if (assigned.length === 0) { alert('Alle Slots sind bereits leer.'); return }
     if (!confirm(`Alle ${assigned.length} Zuweisung${assigned.length !== 1 ? 'en' : ''} aufheben?`)) return
+    const cleared = display.slots.map((s) => ({ ...s, userId: undefined }))
+    setOptimisticSlots(cleared)
     setClearingAll(true)
     try {
-      await saveDisplay({
-        ...display,
-        slots: display.slots.map((s) => ({ ...s, userId: undefined })),
-      })
+      await saveDisplay({ ...display, slots: cleared })
     } catch (err) {
+      setOptimisticSlots(null)
       alert(`Fehler: ${(err as Error).message}`)
     } finally {
       setClearingAll(false)
+      setOptimisticSlots(null)
     }
-  }, [display, saveDisplay])
+  }, [display, currentSlots, saveDisplay])
 
   // ── Add slot ───────────────────────────────────────────────
 
@@ -200,7 +207,7 @@ export default function DisplayPanel({
   }
 
   const displayUrl = `${basePath}display/${display.id}`
-  const assignedCount = display.slots.filter((s) => s.userId).length
+  const assignedCount = currentSlots.filter((s) => s.userId).length
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -348,7 +355,7 @@ export default function DisplayPanel({
                     users={users}
                     cfg={cfg}
                     onAssign={handleAssign}
-                    saving={savingSlot === slot.id}
+                    saving={savingSlot === slot.id}  // only rename/delete show spinner
                   />
                 </div>
               </div>

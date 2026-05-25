@@ -110,9 +110,14 @@ function DisplayOverviewCard({
   viewMode:    'tile' | 'list'
   basePath:    string
 }) {
-  const display     = displayData.data
-  const sorted      = display.slots.slice().sort((a, b) => a.order - b.order)
-  const [saving, setSaving]         = useState<string | null>(null)
+  const display = displayData.data
+
+  // Optimistic slots – updated instantly on assign; rolled back on error
+  const [optimisticSlots, setOptimisticSlots] = useState<typeof display.slots | null>(null)
+  const currentSlots  = optimisticSlots ?? display.slots
+  const sorted        = currentSlots.slice().sort((a, b) => a.order - b.order)
+  const assignedCount = currentSlots.filter((s) => s.userId).length
+
   const [clearingAll, setClearingAll] = useState(false)
   const shaRef = useRef(displayData.sha)
   useEffect(() => { shaRef.current = displayData.sha }, [displayData.sha])
@@ -123,33 +128,40 @@ function DisplayOverviewCard({
     await onUpdated()
   }
 
+  // Optimistic assign: UI updates instantly, API write in background
   const handleAssign = async (slotId: string, userId: string | undefined) => {
-    setSaving(slotId)
+    const newSlots = display.slots.map((s) => s.id === slotId ? { ...s, userId } : s)
+    setOptimisticSlots(newSlots)
     try {
-      await saveAll({ ...display, slots: display.slots.map((s) => s.id === slotId ? { ...s, userId } : s) })
+      await saveAll({ ...display, slots: newSlots })
     } catch (err) {
+      setOptimisticSlots(null) // rollback
       alert(`Fehler: ${(err as Error).message}`)
     } finally {
-      setSaving(null)
+      setOptimisticSlots(null)
     }
   }
 
+  // Optimistic clear-all
   const handleClearAll = async () => {
-    const assigned = display.slots.filter((s) => s.userId)
+    const assigned = currentSlots.filter((s) => s.userId)
     if (assigned.length === 0) { alert('Alle Slots sind bereits leer.'); return }
     if (!confirm(`Alle ${assigned.length} Zuweisung${assigned.length !== 1 ? 'en' : ''} aufheben?`)) return
+    const cleared = display.slots.map((s) => ({ ...s, userId: undefined }))
+    setOptimisticSlots(cleared)
     setClearingAll(true)
     try {
-      await saveAll({ ...display, slots: display.slots.map((s) => ({ ...s, userId: undefined })) })
+      await saveAll({ ...display, slots: cleared })
     } catch (err) {
+      setOptimisticSlots(null) // rollback
       alert(`Fehler: ${(err as Error).message}`)
     } finally {
       setClearingAll(false)
+      setOptimisticSlots(null)
     }
   }
 
-  const displayUrl   = `${basePath}display/${display.id}`
-  const assignedCount = display.slots.filter((s) => s.userId).length
+  const displayUrl = `${basePath}display/${display.id}`
 
   return (
     <div className="bg-surface-800 border border-white/10 rounded-2xl overflow-hidden">
@@ -198,7 +210,7 @@ function DisplayOverviewCard({
                   users={users}
                   cfg={cfg}
                   onAssign={handleAssign}
-                  saving={saving === slot.id}
+                  saving={false}
                 />
               </div>
             </div>
