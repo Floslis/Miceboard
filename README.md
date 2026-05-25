@@ -318,6 +318,21 @@ npm run dev
 
 ---
 
+## Roadmap
+
+Folgende Features sind für zukünftige Versionen geplant:
+
+### 🔗 Planning Center Online (PCO) Integration
+Automatischer Import von Dienstplänen und Teammitgliedern direkt aus Planning Center Online. Zuweisungen in MicBoard spiegeln den PCO-Dienstplan wider, und Änderungen können optional zurückgespielt werden.
+
+### 🎙️ Shure Integration
+Live-Anbindung an Shure Funksysteme (Axient Digital, ULX-D, QLXD) über Shure Wireless Workbench oder die Shure REST API. MicBoard zeigt Akkustand, HF-Signalstärke und Stummschaltstatus direkt auf der Slot-Kachel an — das Soundteam sieht alles auf einen Blick.
+
+### 📡 Sennheiser Integration
+Live-Anbindung an Sennheiser Funksysteme (Digital 6000, EW-DX) über Sennheiser WSM oder die Geräte-API. Akkustand, HF-Qualität und Mute-Status werden analog zur Shure-Integration auf den Slot-Kacheln eingeblendet.
+
+---
+
 ## Tech stack
 
 | Layer | Technology |
@@ -329,6 +344,21 @@ npm run dev
 | Data storage | GitHub REST API |
 | Hosting | GitHub Pages |
 | CI/CD | GitHub Actions |
+
+---
+
+## Roadmap
+
+The following features are planned for future versions:
+
+### 🔗 Planning Center Online (PCO) Integration
+Automatic import of service plans and team members directly from Planning Center Online. Assignments in MicBoard will reflect the PCO service plan, and changes can optionally sync back.
+
+### 🎙️ Shure Integration
+Live connection to Shure wireless systems (Axient Digital, ULX-D, QLXD) via Shure Wireless Workbench or the Shure REST API. MicBoard will display real-time battery levels, RF signal strength, and mute status alongside the person's name — so the sound team sees everything in one place.
+
+### 📡 Sennheiser Integration
+Live connection to Sennheiser wireless systems (Digital 6000, EW-DX) via Sennheiser WSM or the device API. Battery status, RF quality, and mute state will be overlaid on each slot card, matching the Shure integration feature-for-feature.
 
 ---
 

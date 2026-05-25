@@ -7,7 +7,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Mic, Users, Monitor, Settings, LogOut, Plus, RefreshCw,
   Upload, X, LayoutDashboard, ChevronRight, AlertTriangle,
-  LayoutGrid, List as ListIcon, ExternalLink, UserX,
+  LayoutGrid, List as ListIcon, ExternalLink, UserX, Search,
 } from 'lucide-react'
 import clsx from 'clsx'
 import type { User, Display, RemoteData } from '../types'
@@ -341,6 +341,8 @@ export default function AdminPage() {
   const [overviewMode, setOverviewMode] = useState<'tile' | 'list'>('tile')
   const [activeDisplayId, setActiveDisplayId] = useState<string | null>(null)
   const [editingUser, setEditingUser]   = useState<RemoteData<User> | 'new' | null>(null)
+  const [userSearch, setUserSearch]     = useState('')
+  const [userSort, setUserSort]         = useState<'alpha' | 'role' | 'date'>('alpha')
   const { toasts, toast, dismiss }      = useToasts()
 
   const activeDisplay = displays.find((d) => d.data.id === activeDisplayId)
@@ -497,6 +499,28 @@ export default function AdminPage() {
       setLogoUploading(false)
     }
   }, [cfg, toast])
+
+  // ── Filtered + sorted user list ──────────────────────────
+
+  const filteredUsers = users
+    .filter((u) => {
+      if (!userSearch) return true
+      const q = userSearch.toLowerCase()
+      return (
+        u.data.displayName.toLowerCase().includes(q) ||
+        u.data.fullName.toLowerCase().includes(q) ||
+        (u.data.role?.toLowerCase().includes(q) ?? false)
+      )
+    })
+    .slice()
+    .sort((a, b) => {
+      if (userSort === 'alpha') return a.data.displayName.localeCompare(b.data.displayName, 'de')
+      if (userSort === 'role')  return (a.data.role ?? '').localeCompare(b.data.role ?? '', 'de')
+      // date: newest first (updatedAt or createdAt)
+      const da = a.data.updatedAt ?? a.data.createdAt ?? ''
+      const db = b.data.updatedAt ?? b.data.createdAt ?? ''
+      return db.localeCompare(da)
+    })
 
   // ── Render ───────────────────────────────────────────────
 
@@ -672,18 +696,48 @@ export default function AdminPage() {
         {/* Users section */}
         {section === 'users' && !editingUser && (
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-              <h2 className="text-lg font-bold text-white">Nutzer</h2>
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-white/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-white">Nutzer</h2>
+                <div className="flex items-center gap-2">
+                  <button onClick={reloadUsers} disabled={ul}
+                    className="p-2 rounded-lg bg-surface-700 text-white/50 hover:bg-surface-600 transition-colors">
+                    <RefreshCw className={clsx('w-4 h-4', ul && 'animate-spin')} />
+                  </button>
+                  <button onClick={() => setEditingUser('new')}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm transition-colors">
+                    <Plus className="w-4 h-4" />
+                    Neuer Nutzer
+                  </button>
+                </div>
+              </div>
+              {/* Search + sort */}
               <div className="flex items-center gap-2">
-                <button onClick={reloadUsers} disabled={ul}
-                  className="p-2 rounded-lg bg-surface-700 text-white/50 hover:bg-surface-600 transition-colors">
-                  <RefreshCw className={clsx('w-4 h-4', ul && 'animate-spin')} />
-                </button>
-                <button onClick={() => setEditingUser('new')}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm transition-colors">
-                  <Plus className="w-4 h-4" />
-                  Neuer Nutzer
-                </button>
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    placeholder="Suchen …"
+                    className="w-full bg-surface-700 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-white text-sm placeholder-white/25 focus:outline-none focus:border-brand-500 transition-colors"
+                  />
+                  {userSearch && (
+                    <button onClick={() => setUserSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <select
+                  value={userSort}
+                  onChange={(e) => setUserSort(e.target.value as typeof userSort)}
+                  className="bg-surface-700 border border-white/10 rounded-xl px-3 py-2 text-white/70 text-sm focus:outline-none focus:border-brand-500 transition-colors"
+                >
+                  <option value="alpha">A – Z</option>
+                  <option value="role">Nach Rolle</option>
+                  <option value="date">Neueste zuerst</option>
+                </select>
               </div>
             </div>
 
@@ -703,8 +757,12 @@ export default function AdminPage() {
                 </div>
               )}
 
+              {!ul && users.length > 0 && filteredUsers.length === 0 && (
+                <p className="text-white/30 text-sm text-center mt-12">Keine Nutzer für „{userSearch}" gefunden.</p>
+              )}
+
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {users.map((u) => (
+                {filteredUsers.map((u) => (
                   <UserCard
                     key={u.data.id}
                     user={u}
