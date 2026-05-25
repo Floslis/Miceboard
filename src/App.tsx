@@ -27,7 +27,7 @@ export default function App() {
         {/* Setup wizard */}
         <Route
           path="/setup"
-          element={<SetupPage onDone={() => { window.location.href = '/#/admin' }} />}
+          element={<SetupPage onDone={() => { window.location.href = `${import.meta.env.BASE_URL}#/admin` }} />}
         />
 
         {/* Login page */}

@@ -208,7 +208,7 @@ export default function DisplayPanel({
     try { await onUpdated() } finally { setRefreshing(false) }
   }
 
-  const displayUrl = `/#/display/${display.id}`
+  const displayUrl = `${basePath}#/display/${display.id}`
   const assignedCount = currentSlots.filter((s) => s.userId).length
 
   return (

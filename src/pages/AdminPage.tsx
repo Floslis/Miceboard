@@ -160,7 +160,7 @@ function DisplayOverviewCard({
     }
   }
 
-  const displayUrl = `/#/display/${display.id}`
+  const displayUrl = `${basePath}#/display/${display.id}`
 
   return (
     <div className="bg-surface-800 border border-white/10 rounded-2xl overflow-hidden">
