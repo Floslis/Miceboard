@@ -14,25 +14,36 @@ import {
 import { db, auth } from './firebaseApp'
 import type { User, Display, AppSettings } from '../types'
 
+// ── Guard helper ─────────────────────────────────────────────
+
+function requireDb() {
+  if (!db) throw new Error('Firebase not configured – set VITE_FIREBASE_* secrets and redeploy.')
+  return db
+}
+function requireAuth() {
+  if (!auth) throw new Error('Firebase not configured – set VITE_FIREBASE_* secrets and redeploy.')
+  return auth
+}
+
 // ── Path helpers ─────────────────────────────────────────────
 
-const userRef    = (id: string)  => ref(db, `users/${id}`)
-const usersRef   = ()            => ref(db, 'users')
-const displayRef = (id: string)  => ref(db, `displays/${id}`)
-const displaysRef = ()           => ref(db, 'displays')
-const rolesRef   = ()            => ref(db, 'config/roles')
-const settingsRef = ()           => ref(db, 'config/settings')
+const userRef    = (id: string)  => ref(requireDb(), `users/${id}`)
+const usersRef   = ()            => ref(requireDb(), 'users')
+const displayRef = (id: string)  => ref(requireDb(), `displays/${id}`)
+const displaysRef = ()           => ref(requireDb(), 'displays')
+const rolesRef   = ()            => ref(requireDb(), 'config/roles')
+const settingsRef = ()           => ref(requireDb(), 'config/settings')
 
 // ── Auth helpers ─────────────────────────────────────────────
 
 /** Call this when the admin enters the correct password */
 export async function signInAdmin(): Promise<void> {
-  await signInAnonymously(auth)
+  await signInAnonymously(requireAuth())
 }
 
 /** Call this on logout */
 export async function signOutAdmin(): Promise<void> {
-  await fbSignOut(auth)
+  await fbSignOut(requireAuth())
 }
 
 // ── Users ────────────────────────────────────────────────────

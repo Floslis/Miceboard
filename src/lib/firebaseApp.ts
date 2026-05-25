@@ -7,22 +7,24 @@ import { initializeApp } from 'firebase/app'
 import { getDatabase }   from 'firebase/database'
 import { getAuth }       from 'firebase/auth'
 
-const firebaseConfig = {
-  apiKey:      import.meta.env.VITE_FIREBASE_API_KEY      ?? '',
-  authDomain:  (import.meta.env.VITE_FIREBASE_PROJECT_ID  ?? '') + '.firebaseapp.com',
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL ?? '',
-  projectId:   import.meta.env.VITE_FIREBASE_PROJECT_ID   ?? '',
-}
+const apiKey      = import.meta.env.VITE_FIREBASE_API_KEY      ?? ''
+const projectId   = import.meta.env.VITE_FIREBASE_PROJECT_ID   ?? ''
+const databaseURL = import.meta.env.VITE_FIREBASE_DATABASE_URL ?? ''
 
-export const app  = initializeApp(firebaseConfig)
-export const db   = getDatabase(app)
-export const auth = getAuth(app)
+const firebaseConfig = {
+  apiKey,
+  authDomain:  projectId ? projectId + '.firebaseapp.com' : '',
+  databaseURL,
+  projectId,
+}
 
 /** True when all required env-vars are present */
 export function isFirebaseConfigured(): boolean {
-  return Boolean(
-    import.meta.env.VITE_FIREBASE_API_KEY &&
-    import.meta.env.VITE_FIREBASE_PROJECT_ID &&
-    import.meta.env.VITE_FIREBASE_DATABASE_URL,
-  )
+  return Boolean(apiKey && projectId && databaseURL)
 }
+
+// Only initialise Firebase when the config is complete.
+// If env-vars are missing the app renders normally but Firebase calls throw a clear error.
+export const app  = isFirebaseConfigured() ? initializeApp(firebaseConfig) : null
+export const db   = app ? getDatabase(app) : null
+export const auth = app ? getAuth(app)     : null
