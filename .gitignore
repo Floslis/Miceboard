@@ -26,6 +26,9 @@ dist-ssr/
 .DS_Store
 Thumbs.db
 
+# Vite temp files
+vite.config.ts.timestamp-*.mjs
+
 # Logs
 *.log
 npm-debug.log*
