@@ -1,256 +1,147 @@
-# 🎤 MicBoard
+# MicBoard
 
-**Live microphone & position display for churches, events, and stage productions.**  
-**Live-Mikrofon & Positionsanzeige für Kirchen, Events und Bühnenproduktionen.**
+**Live microphone & position display for churches and events.**  
+Assign wireless microphones to people in real time — displayed on any screen or as an OBS Browser Source.
 
----
-
-<!-- SCREENSHOT PLACEHOLDER – replace with real screenshot once deployed -->
-<!-- ![MicBoard Admin Panel](docs/screenshot-admin.png) -->
-<!-- ![MicBoard Display View](docs/screenshot-display.png) -->
-
-> **Note / Hinweis:** Screenshots werden nach dem ersten Live-Einsatz ergänzt.
+{Foto (Hero-Shot: das fertige Display auf einem großen Bildschirm oder TV, mehrere Slots mit Personenfotos und Namen sichtbar, dunkler Hintergrund)}
 
 ---
 
-## 🌍 Language / Sprache
+## What it does
 
-- [🇩🇪 Deutsch](#deutsch)
-- [🇬🇧 English](#english)
+MicBoard shows which microphone belongs to which person — live, with no page refresh needed. A sound engineer or volunteer assigns mics in the admin panel; every connected display updates instantly.
 
----
-
-<a id="deutsch"></a>
-# 🇩🇪 Deutsch
-
-## Was ist MicBoard?
-
-MicBoard ist ein webbasiertes Display-System das in Echtzeit anzeigt, welche Person welches Mikrofon oder welche Bühnenposition belegt. Es ist speziell für den Einsatz in:
-
-- ⛪ Kirchen und Gottesdiensten
-- 🎤 Moderationen und Events
-- 🎸 Bühnenproduktionen und Konzerten
-- 📡 Streams und Online-Übertragungen
-- 🎬 Theater und Showproduktionen
-
-### Warum MicBoard?
-
-Das Soundteam weiß immer genau, wer gerade welches Mikrofon trägt – ohne Zuruferei, ohne Zettel, ohne Missverständnisse. Displays können auf TVs, Beamern oder als OBS Browser Source laufen.
-
-### Technischer Ansatz: 100 % GitHub-nativ
-
-MicBoard braucht keinen eigenen Server, keine Datenbank und keine externen Dienste.  
-Alle Daten liegen als JSON-Dateien in einem **privaten GitHub Repository**.  
-Die App läuft kostenlos auf **GitHub Pages**.
+{Foto (Split-Screen: links das Admin-Panel mit Slot-Zuweisung, rechts gleichzeitig das Display wie es sich in Echtzeit aktualisiert)}
 
 ---
 
-## Schnellstart (5 Minuten)
+## Features
 
-### Schritt 1 – Repository forken
-
-Klicke oben rechts auf **Fork** und erstelle deine eigene Kopie des Repositories.
-
-### Schritt 2 – GitHub Pages aktivieren
-
-In deinem geforkten Repo: **Settings → Pages → Source: GitHub Actions** → Speichern.
-
-### Schritt 3 – Privates Datenrepository erstellen
-
-Erstelle ein **neues privates** Repository, z. B. `micboard-data`.  
-Aktiviere beim Erstellen „Add a README file" (damit das Repo nicht leer ist).
-
-### Schritt 4 – GitHub Token erstellen
-
-Gehe zu **GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens**.
-
-Berechtigungen für das **Datenrepository**:
-- **Contents** – Read and write
-- **Metadata** – Read
-
-Oder: Classic Token mit `repo` Scope.
-
-### Schritt 5 – Secrets eintragen
-
-In deinem **öffentlichen** Fork-Repo: **Settings → Secrets and variables → Actions**
-
-| Secret | Beschreibung |
-|--------|-------------|
-| `VITE_GITHUB_TOKEN` | Dein Personal Access Token |
-| `VITE_GITHUB_OWNER` | Dein GitHub-Benutzername |
-| `VITE_DATA_REPO` | Name des Daten-Repos (z. B. `micboard-data`) |
-| `VITE_DATA_BRANCH` | Branch des Daten-Repos (meistens `main`) |
-| `VITE_ADMIN_PASSWORD` | Dein Admin-Passwort |
-
-Unter **Variables** (nicht Secrets!):
-
-| Variable | Wert |
-|----------|------|
-| `VITE_BASE_PATH` | `/dein-repo-name/` – z. B. `/Miceboard/` |
-
-### Schritt 6 – Deployment starten
-
-**Actions → Deploy to GitHub Pages → Run workflow**
-
-Nach ca. 1–2 Minuten ist die App live.
-
-### Schritt 7 – Ersteinrichtung
-
-Öffne `https://DEIN-USERNAME.github.io/REPO-NAME/`
-
-1. Gib Token, Owner und Datenrepository ein
-2. Klicke **Speichern & einrichten** – die App erstellt alle nötigen Dateien automatisch
-3. Logge dich mit deinem Admin-Passwort ein
-4. Lege Nutzer an, lade Fotos hoch, konfiguriere Displays
+- **Real-time sync** — Firebase Realtime Database pushes updates in under 100 ms
+- **Optimistic UI** — Assignments show on screen the moment you click, before the server even confirms
+- **Multiple displays** — Run separate screens for main stage, side stage, livestream OBS scene, etc.
+- **Flexible slots** — Add, rename and reorder slots per display (Preacher, Vox 1, Vox 2, Moderator …)
+- **Aspect ratio per display** — 16:9, 21:9 and 32:9 for ultrawide and multi-screen setups
+- **User photos** — Upload a photo per person; shown on both the display and the admin panel
+- **Password-protected admin** — Simple password login, no user accounts required
+- **100 % free to run** — GitHub Pages for hosting, Firebase free tier for the database, GitHub for image storage
 
 ---
 
-## Displays aufrufen
+## Screenshots
 
-Jedes Display hat eine eigene URL:
+### Admin panel
 
-```
-https://DEIN-USERNAME.github.io/REPO-NAME/display/DISPLAY-ID
-```
+{Foto (Admin-Panel Gesamtansicht: linke Sidebar mit Nutzer-/Display-Liste, rechts das aktive Display mit mehreren Slots, einige belegt mit Personenfotos)}
 
-Beispiel: `.../display/main-stage`, `.../display/backstage`
+{Foto (Nahaufnahme Slot-Zuweisung: Klick auf einen leeren Slot öffnet die Personenauswahl mit Fotos)}
 
-Diese URLs können direkt als **OBS Browser Source** oder auf einem **TV/Beamer** geöffnet werden.
+### Display screen
 
----
+{Foto (Display-Ansicht auf TV oder Beamer: 4–6 Slots mit großen Personenfotos, Namen und Rollenbeschriftung, cleaner dunkler Look)}
 
-## Updates aus dem Original-Repository ziehen
+{Foto (Display in OBS als Browser Source: erkennbares OBS-Interface mit eingebetteter MicBoard-Ansicht)}
 
-Wenn im Original-Repository (Floslis/Miceboard) Updates erscheinen, kannst du diese in deinen Fork übernehmen:
+### Mobile
 
-**Per GitHub-Weboberfläche (einfachste Methode):**
-1. Gehe zu deinem Fork auf GitHub
-2. Klicke auf **"Sync fork"** → **"Update branch"**
-
-**Per Terminal:**
-```bash
-git remote add upstream https://github.com/Floslis/Miceboard.git
-git fetch upstream
-git merge upstream/main
-git push
-```
-
-> ⚠️ Eigene Anpassungen am Code solltest du in einem separaten Branch oder per Fork-Commit sichern, damit Merges reibungslos laufen.
+{Foto (Admin-Panel auf dem Smartphone: Slots gut bedienbar, Zuweisung per Tap)}
 
 ---
 
-## Datenstruktur
+## Architecture
 
-```
-micboard-data/          ← privates GitHub-Repo
-├── config/
-│   ├── settings.json   ← globale Einstellungen
-│   └── logo.webp       ← dein Logo (optional)
-├── displays/
-│   └── main-stage.json ← Display-Konfiguration
-├── images/
-│   └── user-xyz.webp   ← Profilbilder
-└── users/
-    └── user-1.json     ← Nutzerdaten
-```
+| What | Where | Why |
+|---|---|---|
+| Users, displays, roles, settings | Firebase Realtime Database | < 100 ms writes, WebSocket real-time sync |
+| User photos / images | Private GitHub repo | Free, no Firebase Storage needed |
+| App hosting | GitHub Pages | Free, auto-deploy via GitHub Actions |
+
+Images stay on GitHub and are referenced by URL — Firebase Storage is not used and not required.  
+The Firebase free tier (Spark plan) covers everything MicBoard needs: 1 GB storage, 10 GB/month transfer.
 
 ---
 
-## Lokale Entwicklung
+## Setup
+
+### 1 · Fork & clone
+
+Click **Fork** at the top right, then:
 
 ```bash
-git clone https://github.com/DEIN-USERNAME/Miceboard.git
-cd Miceboard
+git clone https://github.com/YOUR_USERNAME/YOUR_FORK.git
+cd YOUR_FORK
 npm install
-cp .env.example .env.local
-# .env.local mit deinen Werten füllen
-npm run dev
 ```
 
----
+### 2 · Create a Firebase project
 
-<a id="english"></a>
-# 🇬🇧 English
+1. Go to [console.firebase.google.com](https://console.firebase.google.com) → **Add project**
+2. In the project: **Build → Realtime Database → Create database** → choose a region → start in **test mode**
+3. Note your **Database URL** (e.g. `https://your-project-default-rtdb.europe-west1.firebasedatabase.app`)
+4. Go to **Project settings → General → Your apps → Add app (Web)** → note the config values
 
-## What is MicBoard?
+{Foto (Firebase Console: Realtime Database Übersicht mit Datenbankinhalt – users, displays, config als Baumstruktur sichtbar)}
 
-MicBoard is a web-based display system that shows in real time which person is using which microphone or stage position. It's built for:
+### 3 · Create a private GitHub repo for images
 
-- ⛪ Churches and worship services
-- 🎤 Events and moderated shows
-- 🎸 Stage productions and concerts
-- 📡 Live streams and broadcasts
-- 🎬 Theater and live TV productions
+Create a new **private** repository (e.g. `micboard-data`) — this is where user photos will be stored.  
+Generate a **Personal Access Token** (PAT) with `repo` scope under  
+**Settings → Developer settings → Personal access tokens → Fine-grained tokens**.
 
-### Why MicBoard?
+### 4 · Set GitHub Secrets
 
-The sound team always knows who's wearing which mic — no shouting across the room, no sticky notes, no confusion. Displays work on TVs, projectors, or as OBS browser sources.
+In your forked repository: **Settings → Secrets and variables → Actions → New repository secret**
 
-### Technical approach: 100 % GitHub-native
-
-MicBoard needs no server, no database, no third-party services.  
-All data is stored as JSON files in a **private GitHub repository**.  
-The app runs for free on **GitHub Pages**.
-
----
-
-## Quick Start (5 minutes)
-
-### Step 1 – Fork the repository
-
-Click **Fork** in the top-right corner to create your own copy.
-
-### Step 2 – Enable GitHub Pages
-
-In your fork: **Settings → Pages → Source: GitHub Actions** → Save.
-
-### Step 3 – Create a private data repository
-
-Create a **new private** repository, e.g. `micboard-data`.  
-Enable "Add a README file" during creation so the repo isn't empty.
-
-### Step 4 – Create a GitHub token
-
-Go to **GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens**.
-
-Required permissions on the **data repository**:
-- **Contents** – Read and write
-- **Metadata** – Read
-
-Or: Classic token with `repo` scope.
-
-### Step 5 – Set up secrets
-
-In your **public** fork: **Settings → Secrets and variables → Actions**
-
-| Secret | Description |
-|--------|-------------|
-| `VITE_GITHUB_TOKEN` | Your personal access token |
+| Secret | Value |
+|---|---|
+| `VITE_ADMIN_PASSWORD` | Password for the admin login |
+| `VITE_FIREBASE_API_KEY` | From Firebase project settings |
+| `VITE_FIREBASE_PROJECT_ID` | e.g. `my-project-12345` |
+| `VITE_FIREBASE_DATABASE_URL` | e.g. `https://my-project-default-rtdb.europe-west1.firebasedatabase.app` |
+| `VITE_GITHUB_TOKEN` | Your PAT (for image uploads) |
 | `VITE_GITHUB_OWNER` | Your GitHub username |
-| `VITE_DATA_REPO` | Name of the data repo (e.g. `micboard-data`) |
-| `VITE_DATA_BRANCH` | Branch of the data repo (usually `main`) |
-| `VITE_ADMIN_PASSWORD` | Your admin password |
+| `VITE_DATA_REPO` | Name of the private image repo |
+| `VITE_DATA_BRANCH` | Branch name, usually `main` |
 
-Under **Variables** (not Secrets!):
+Also add this **variable** (not a secret — it can be public):
 
 | Variable | Value |
-|----------|-------|
-| `VITE_BASE_PATH` | `/your-repo-name/` – e.g. `/Miceboard/` |
+|---|---|
+| `VITE_BASE_PATH` | `/YOUR_REPO_NAME/` — e.g. `/Miceboard/` |
 
-### Step 6 – Trigger deployment
+{Foto (GitHub Repository Settings: Secrets and Variables Seite mit den eingetragenen Secrets, Werte geschwärzt)}
 
-**Actions → Deploy to GitHub Pages → Run workflow**
+### 5 · Enable GitHub Pages
 
-After about 1–2 minutes the app is live.
+**Settings → Pages → Source: GitHub Actions** → Save.
 
-### Step 7 – First-run setup
+### 6 · Deploy
 
-Open `https://YOUR-USERNAME.github.io/REPO-NAME/`
+Push anything to `main` — GitHub Actions builds and deploys automatically.  
+Your app will be live at `https://YOUR_USERNAME.github.io/YOUR_REPO/`
 
-1. Enter your token, owner and data repository
-2. Click **Save & initialize** – the app creates all required files automatically
-3. Log in with your admin password
-4. Create users, upload photos, configure displays
+{Foto (GitHub Actions: grüner Haken bei Build und Deploy Job nach erfolgreichem Deployment)}
+
+### 7 · Migrate existing data (optional)
+
+Coming from the old GitHub-based MicBoard backend? Open `migrate.html` from the repo root in your browser, enter your old GitHub credentials and new Firebase credentials — all users, displays, roles and settings transfer in one click.
+
+---
+
+## Tighten security after setup
+
+Once everything works, update the Firebase rules under **Realtime Database → Rules**:
+
+```json
+{
+  "rules": {
+    ".read": true,
+    ".write": "auth != null"
+  }
+}
+```
+
+The admin login triggers anonymous Firebase auth — only logged-in admins can write. Display screens read without auth.
 
 ---
 
@@ -259,22 +150,19 @@ Open `https://YOUR-USERNAME.github.io/REPO-NAME/`
 Each display has its own URL:
 
 ```
-https://YOUR-USERNAME.github.io/REPO-NAME/display/DISPLAY-ID
+https://YOUR_USERNAME.github.io/YOUR_REPO/#/display/DISPLAY_ID
 ```
 
-Example: `.../display/main-stage`, `.../display/backstage`
-
-Open these URLs directly as an **OBS Browser Source** or on a **TV/projector**.
+Open these directly as an **OBS Browser Source** or on any **TV / projector**.  
+The display updates in real time — no refresh needed, ever.
 
 ---
 
-## Pulling updates from the original repository
+## Pulling updates from the original repo
 
-When updates appear in the original repo (Floslis/Miceboard), you can merge them into your fork:
+When new versions appear in [Floslis/Miceboard](https://github.com/Floslis/Miceboard), sync your fork:
 
-**Via GitHub web interface (easiest):**
-1. Go to your fork on GitHub
-2. Click **"Sync fork"** → **"Update branch"**
+**Via GitHub (easiest):** Go to your fork → click **Sync fork → Update branch**
 
 **Via terminal:**
 ```bash
@@ -284,64 +172,43 @@ git merge upstream/main
 git push
 ```
 
-> ⚠️ If you've made custom code changes, save them in a separate branch first so merges go smoothly.
-
----
-
-## Data structure
-
-```
-micboard-data/          ← private GitHub repo
-├── config/
-│   ├── settings.json   ← global settings
-│   └── logo.webp       ← your logo (optional)
-├── displays/
-│   └── main-stage.json ← display configuration
-├── images/
-│   └── user-xyz.webp   ← profile images
-└── users/
-    └── user-1.json     ← user data
-```
-
 ---
 
 ## Local development
 
-```bash
-git clone https://github.com/YOUR-USERNAME/Miceboard.git
-cd Miceboard
-npm install
-cp .env.example .env.local
-# fill in .env.local with your values
-npm run dev
+Create a `.env.local` file:
+
+```env
+VITE_ADMIN_PASSWORD=yourpassword
+VITE_FIREBASE_API_KEY=AIzaSy...
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_DATABASE_URL=https://your-project-default-rtdb.europe-west1.firebasedatabase.app
+VITE_GITHUB_TOKEN=ghp_...
+VITE_GITHUB_OWNER=your-username
+VITE_DATA_REPO=your-image-repo
+VITE_DATA_BRANCH=main
+VITE_BASE_PATH=/
 ```
 
----
+Then:
 
-## Roadmap
-
-Folgende Features sind für zukünftige Versionen geplant:
-
-### 🔗 Planning Center Online (PCO) Integration
-Automatischer Import von Dienstplänen und Teammitgliedern direkt aus Planning Center Online. Zuweisungen in MicBoard spiegeln den PCO-Dienstplan wider, und Änderungen können optional zurückgespielt werden.
-
-### 🎙️ Shure Integration
-Live-Anbindung an Shure Funksysteme (Axient Digital, ULX-D, QLXD) über Shure Wireless Workbench oder die Shure REST API. MicBoard zeigt Akkustand, HF-Signalstärke und Stummschaltstatus direkt auf der Slot-Kachel an — das Soundteam sieht alles auf einen Blick.
-
-### 📡 Sennheiser Integration
-Live-Anbindung an Sennheiser Funksysteme (Digital 6000, EW-DX) über Sennheiser WSM oder die Geräte-API. Akkustand, HF-Qualität und Mute-Status werden analog zur Shure-Integration auf den Slot-Kacheln eingeblendet.
+```bash
+npm run dev
+```
 
 ---
 
 ## Tech stack
 
 | Layer | Technology |
-|-------|-----------|
+|---|---|
 | Frontend | React 18 + TypeScript |
-| Build tool | Vite |
+| Build | Vite |
 | Styling | TailwindCSS |
-| Routing | React Router v6 |
-| Data storage | GitHub REST API |
+| Routing | React Router v6 (HashRouter) |
+| Real-time data | Firebase Realtime Database |
+| Auth | Firebase Anonymous Auth |
+| Image storage | GitHub REST API |
 | Hosting | GitHub Pages |
 | CI/CD | GitHub Actions |
 
@@ -349,23 +216,16 @@ Live-Anbindung an Sennheiser Funksysteme (Digital 6000, EW-DX) über Sennheiser 
 
 ## Roadmap
 
-The following features are planned for future versions:
-
-### 🔗 Planning Center Online (PCO) Integration
-Automatic import of service plans and team members directly from Planning Center Online. Assignments in MicBoard will reflect the PCO service plan, and changes can optionally sync back.
-
-### 🎙️ Shure Integration
-Live connection to Shure wireless systems (Axient Digital, ULX-D, QLXD) via Shure Wireless Workbench or the Shure REST API. MicBoard will display real-time battery levels, RF signal strength, and mute status alongside the person's name — so the sound team sees everything in one place.
-
-### 📡 Sennheiser Integration
-Live connection to Sennheiser wireless systems (Digital 6000, EW-DX) via Sennheiser WSM or the device API. Battery status, RF quality, and mute state will be overlaid on each slot card, matching the Shure integration feature-for-feature.
+- **Planning Center Online (PCO)** — import service plans and team members automatically
+- **Shure Wireless** — live battery, RF and mute status from Axient Digital, ULX-D, QLXD
+- **Sennheiser Wireless** — live status from Digital 6000 and EW-DX systems
 
 ---
 
 ## License
 
-MIT – fork, adapt, use freely.
+MIT — fork, adapt, use freely.
 
 ---
 
-*Built for live production teams that need fast, reliable, and simple microphone tracking.*
+*Built for live production teams that need fast, reliable, zero-fuss microphone tracking.*
