@@ -13,7 +13,7 @@ import clsx from 'clsx'
 import type { User, Display, RemoteData } from '../types'
 import { useAuth } from '../hooks/useAuth'
 import { useGitHubConfig, useUsers, useDisplays, useRoles } from '../hooks/useGitHub'
-import { loadConfig, saveConfig, clearConfig } from '../lib/config'
+import { loadConfig } from '../lib/config'
 import * as GH from '../lib/github'
 import { fileToWebP, isValidImageFile } from '../lib/imageUtils'
 import { useLogo, LOGO_PATH } from '../hooks/useLogo'
@@ -453,27 +453,6 @@ export default function AdminPage() {
     toast.success('Nutzer gelöscht.')
   }, [reloadUsers, toast])
 
-  // ── Settings section ─────────────────────────────────────
-
-  const [settingsForm, setSettingsForm] = useState({
-    owner:      runtimeCfg?.owner      ?? '',
-    dataRepo:   runtimeCfg?.dataRepo   ?? '',
-    dataBranch: runtimeCfg?.dataBranch ?? 'main',
-    pollInterval: String(runtimeCfg?.pollInterval ?? 8000),
-  })
-
-  const saveSettings = () => {
-    if (!runtimeCfg) return
-    saveConfig({
-      ...runtimeCfg,
-      owner:       settingsForm.owner,
-      dataRepo:    settingsForm.dataRepo,
-      dataBranch:  settingsForm.dataBranch,
-      pollInterval: Number(settingsForm.pollInterval),
-    })
-    toast.success('Einstellungen gespeichert. Bitte Seite neu laden.')
-  }
-
   // ── Logo upload ───────────────────────────────────────────
 
   const logoInputRef             = useRef<HTMLInputElement>(null)
@@ -833,44 +812,6 @@ export default function AdminPage() {
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f) }}
                 />
               </div>
-              <div className="bg-surface-800 border border-white/10 rounded-2xl p-5 space-y-4">
-                <p className="text-sm font-semibold text-white/70 uppercase tracking-wider">GitHub-Verbindung</p>
-
-                {(['owner', 'dataRepo', 'dataBranch'] as const).map((key) => (
-                  <label key={key} className="block">
-                    <span className="text-xs text-white/40 mb-1 block">
-                      {key === 'owner' ? 'GitHub Owner' : key === 'dataRepo' ? 'Data Repository' : 'Branch'}
-                    </span>
-                    <input
-                      type="text"
-                      value={settingsForm[key]}
-                      onChange={(e) => setSettingsForm((p) => ({ ...p, [key]: e.target.value }))}
-                      className="w-full bg-surface-700 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-brand-500 transition-colors"
-                    />
-                  </label>
-                ))}
-
-                <label className="block">
-                  <span className="text-xs text-white/40 mb-1 block">Poll-Intervall (ms)</span>
-                  <input
-                    type="number"
-                    value={settingsForm.pollInterval}
-                    min={2000}
-                    max={60000}
-                    step={1000}
-                    onChange={(e) => setSettingsForm((p) => ({ ...p, pollInterval: e.target.value }))}
-                    className="w-full bg-surface-700 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-brand-500 transition-colors"
-                  />
-                </label>
-
-                <button
-                  onClick={saveSettings}
-                  className="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold transition-colors"
-                >
-                  Einstellungen speichern
-                </button>
-              </div>
-
               <div className="bg-surface-800 border border-red-500/20 rounded-2xl p-5 space-y-3">
                 <p className="text-sm font-semibold text-red-400/80 uppercase tracking-wider">Gefahrenbereich</p>
 
@@ -895,14 +836,6 @@ export default function AdminPage() {
                     </button>
                   </div>
                 </div>
-
-                {/* Local config reset */}
-                <button
-                  onClick={() => { if (confirm('Lokale Konfiguration (Token, Repo) wirklich löschen?')) { clearConfig(); window.location.reload() } }}
-                  className="px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 text-sm font-medium transition-colors"
-                >
-                  Lokale Konfiguration zurücksetzen
-                </button>
               </div>
             </div>
           </div>
