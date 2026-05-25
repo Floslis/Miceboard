@@ -40,15 +40,19 @@ function UserCard({
     >
       {u.image && bgUrl && (
         <>
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage:    `url(${bgUrl})`,
-              backgroundPosition: `${u.imagePosition?.x ?? 50}% ${u.imagePosition?.y ?? 30}%`,
-              backgroundSize:     `${Math.round((u.imageScale ?? 1.15) * 100)}%`,
-              backgroundRepeat:   'no-repeat',
-            }}
-          />
+          <div className="absolute inset-0 overflow-hidden">
+            <img
+              src={bgUrl}
+              alt=""
+              className="w-full h-full object-cover select-none pointer-events-none"
+              draggable={false}
+              style={{
+                objectPosition: `${u.imagePosition?.x ?? 50}% ${u.imagePosition?.y ?? 25}%`,
+                transform: (u.imageScale ?? 1.0) !== 1 ? `scale(${u.imageScale})` : undefined,
+                transformOrigin: `${u.imagePosition?.x ?? 50}% ${u.imagePosition?.y ?? 25}%`,
+              }}
+            />
+          </div>
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/0" />
         </>
       )}
@@ -597,6 +601,7 @@ export default function AdminPage() {
             <UserEditor
               existing={editingUser === 'new' ? undefined : editingUser}
               cfg={cfg}
+              displays={displays}
               onSaved={handleUserSaved}
               onDeleted={editingUser !== 'new' ? handleUserDeleted : undefined}
               onCancel={() => setEditingUser(null)}

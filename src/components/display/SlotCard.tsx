@@ -2,7 +2,7 @@ import { memo } from 'react'
 import clsx from 'clsx'
 import type { Slot, User } from '../../types'
 import type { GitHubConfig } from '../../lib/github'
-import { positionToCss, scaleToCss } from '../../lib/imageUtils'
+import { positionToCss } from '../../lib/imageUtils'
 import { useAuthImage } from '../../hooks/useAuthImage'
 
 interface Props {
@@ -18,10 +18,11 @@ const SlotCard = memo(function SlotCard({ slot, user, cfg }: Props) {
   const hasUser = Boolean(user)
 
   // Authenticated image fetch – works for both private and public repos
-  const bgUrl = useAuthImage(user?.image ? cfg : null, user?.image ?? null)
+  const imgUrl = useAuthImage(user?.image ? cfg : null, user?.image ?? null)
 
-  const bgPos  = positionToCss(user?.imagePosition?.x, user?.imagePosition?.y)
-  const bgSize = scaleToCss(user?.imageScale ?? 1.15)
+  const posX  = user?.imagePosition?.x ?? 50
+  const posY  = user?.imagePosition?.y ?? 30
+  const scale = user?.imageScale ?? 1.0
 
   return (
     <div
@@ -30,18 +31,22 @@ const SlotCard = memo(function SlotCard({ slot, user, cfg }: Props) {
         'bg-surface-700 border border-white/5',
       )}
     >
-      {/* Background image */}
-      {bgUrl && (
+      {/* Background image – object-fit: cover guarantees full top-to-bottom fill */}
+      {imgUrl && (
         <>
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage:    `url(${bgUrl})`,
-              backgroundPosition: bgPos,
-              backgroundSize:     bgSize,
-              backgroundRepeat:   'no-repeat',
-            }}
-          />
+          <div className="absolute inset-0 overflow-hidden">
+            <img
+              src={imgUrl}
+              alt=""
+              className="w-full h-full object-cover select-none pointer-events-none"
+              draggable={false}
+              style={{
+                objectPosition: positionToCss(posX, posY),
+                transform: scale !== 1 ? `scale(${scale})` : undefined,
+                transformOrigin: `${posX}% ${posY}%`,
+              }}
+            />
+          </div>
           {/* Gradient: stronger top + bottom for readability */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/20 to-black/60" />
         </>

@@ -40,11 +40,13 @@ export interface Display {
   theme?: DisplayTheme
   slotWidth?: number       // Fixed slot width in px; undefined = auto (equal columns)
   slotGap?: number         // Gap between slots in px; default 12
+  aspectRatio?: DisplayAspectRatio  // Screen format for preview calculations
   updatedAt?: string
 }
 
-export type DisplayLayout = 'grid' | 'row' | 'column'
-export type DisplayTheme  = 'dark' | 'light' | 'cinema'
+export type DisplayLayout      = 'grid' | 'row' | 'column'
+export type DisplayTheme       = 'dark' | 'light' | 'cinema'
+export type DisplayAspectRatio = '16:9' | '21:9' | '32:9'
 
 /** Global application settings stored in config/settings.json */
 export interface AppSettings {

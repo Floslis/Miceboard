@@ -1,10 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Plus, ExternalLink, RefreshCw, Pencil, Trash2, Check, X } from 'lucide-react'
+import { Plus, ExternalLink, RefreshCw, Pencil, Trash2, Check, X, Monitor } from 'lucide-react'
 import clsx from 'clsx'
-import type { Display, Slot, User, RemoteData } from '../../types'
+import type { Display, Slot, User, RemoteData, DisplayAspectRatio } from '../../types'
 import type { GitHubConfig } from '../../lib/github'
 import * as GH from '../../lib/github'
 import SlotAssignment from './SlotAssignment'
+
+const ASPECT_RATIO_OPTIONS: DisplayAspectRatio[] = ['16:9', '21:9', '32:9']
 
 interface Props {
   displayData: RemoteData<Display>
@@ -162,6 +164,16 @@ export default function DisplayPanel({
     }
   }
 
+  // ── Aspect ratio ──────────────────────────────────────────
+
+  const handleSetAspectRatio = useCallback(async (ar: DisplayAspectRatio) => {
+    try {
+      await saveDisplay({ ...display, aspectRatio: ar })
+    } catch (err) {
+      alert(`Fehler: ${(err as Error).message}`)
+    }
+  }, [display, saveDisplay])
+
   // ── Refresh ───────────────────────────────────────────────
 
   const refresh = async () => {
@@ -201,6 +213,26 @@ export default function DisplayPanel({
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Aspect ratio selector */}
+          <div className="flex items-center gap-1 bg-surface-700 rounded-lg p-1" title="Bildschirmformat">
+            <Monitor className="w-3.5 h-3.5 text-white/25 ml-1 shrink-0" />
+            {ASPECT_RATIO_OPTIONS.map((ar) => (
+              <button
+                key={ar}
+                onClick={() => handleSetAspectRatio(ar)}
+                className={clsx(
+                  'px-2 py-1 rounded-md text-[11px] font-semibold transition-colors',
+                  display.aspectRatio === ar
+                    ? 'bg-brand-600 text-white'
+                    : 'text-white/35 hover:text-white/70 hover:bg-white/5',
+                )}
+                title={`Bildschirmformat ${ar}`}
+              >
+                {ar}
+              </button>
+            ))}
+          </div>
+
           <button onClick={refresh} disabled={refreshing}
             className="p-2 rounded-lg bg-surface-700 text-white/50 hover:bg-surface-600 hover:text-white transition-colors disabled:opacity-40"
             title="Aktualisieren">
