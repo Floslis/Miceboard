@@ -97,6 +97,29 @@ export default function DisplayPanel({
     }
   }, [display, saveDisplay])
 
+  // ── Quick-add user ─────────────────────────────────────────
+  // Creates a minimal User (name only, no photo) and immediately assigns them.
+  // The new user appears in the Users tab and can be completed later.
+
+  const handleQuickAdd = useCallback(async (slotId: string, name: string) => {
+    const id = 'user-' + Date.now().toString(36)
+    await FB.saveUser({ id, displayName: name, fullName: name, active: true, createdAt: new Date().toISOString() })
+    const newSlots = display.slots.map((s) => {
+      if (s.id !== slotId) return s
+      const { userId: _removed, ...rest } = s
+      return { ...rest, userId: id }
+    })
+    setOptimisticSlots(newSlots)
+    try {
+      await saveDisplay({ ...display, slots: newSlots })
+    } catch (err) {
+      setOptimisticSlots(null)
+      alert(`Fehler: ${(err as Error).message}`)
+    } finally {
+      setOptimisticSlots(null)
+    }
+  }, [display, saveDisplay])
+
   // ── Slot rename (via prompt – simple and clear) ────────────
 
   const handleRenameSlot = useCallback(async (slotId: string, currentName: string) => {
@@ -357,7 +380,8 @@ export default function DisplayPanel({
                     users={users}
                     cfg={cfg}
                     onAssign={handleAssign}
-                    saving={savingSlot === slot.id}  // only rename/delete show spinner
+                    onQuickAdd={handleQuickAdd}
+                    saving={savingSlot === slot.id}
                   />
                 </div>
               </div>

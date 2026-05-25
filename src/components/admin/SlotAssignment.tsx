@@ -6,7 +6,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Search, X, UserX, UserMinus } from 'lucide-react'
+import { Search, X, UserX, UserMinus, UserPlus } from 'lucide-react'
 import clsx from 'clsx'
 import type { User, Slot, RemoteData } from '../../types'
 import type { GitHubConfig } from '../../lib/github'
@@ -15,11 +15,12 @@ import { useAuthImage } from '../../hooks/useAuthImage'
 import { getAuthImageUrl } from '../../lib/imageCache'
 
 interface Props {
-  slot:     Slot
-  users:    RemoteData<User>[]
-  cfg:      GitHubConfig
-  onAssign: (slotId: string, userId: string | undefined) => Promise<void>
-  saving?:  boolean
+  slot:         Slot
+  users:        RemoteData<User>[]
+  cfg:          GitHubConfig
+  onAssign:     (slotId: string, userId: string | undefined) => Promise<void>
+  onQuickAdd?:  (slotId: string, name: string) => Promise<void>
+  saving?:      boolean
 }
 
 // ── Per-row avatar ────────────────────────────────────────────
@@ -51,10 +52,11 @@ function UserAvatar({ user, cfg }: { user: User; cfg: GitHubConfig }) {
 
 // ── Main component ────────────────────────────────────────────
 
-export default function SlotAssignment({ slot, users, cfg, onAssign, saving }: Props) {
-  const [open, setOpen]   = useState(false)
-  const [query, setQuery] = useState('')
-  const inputRef          = useRef<HTMLInputElement>(null)
+export default function SlotAssignment({ slot, users, cfg, onAssign, onQuickAdd, saving }: Props) {
+  const [open, setOpen]         = useState(false)
+  const [query, setQuery]       = useState('')
+  const [adding, setAdding]     = useState(false)
+  const inputRef                = useRef<HTMLInputElement>(null)
 
   const assigned  = users.find((u) => u.data.id === slot.userId)?.data
   const slotBgUrl = useAuthImage(assigned?.image ? cfg : null, assigned?.image ?? null)
@@ -89,6 +91,17 @@ export default function SlotAssignment({ slot, users, cfg, onAssign, saving }: P
   const select = async (userId: string | undefined) => {
     setOpen(false)
     await onAssign(slot.id, userId)
+  }
+
+  const quickAdd = async () => {
+    if (!onQuickAdd || !query.trim()) return
+    setAdding(true)
+    try {
+      await onQuickAdd(slot.id, query.trim())
+      setOpen(false)
+    } finally {
+      setAdding(false)
+    }
   }
 
   // ── Centred modal (portal) ────────────────────────────────
@@ -130,6 +143,7 @@ export default function SlotAssignment({ slot, users, cfg, onAssign, saving }: P
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Person suchen …"
+              onKeyDown={(e) => { if (e.key === 'Enter' && query.trim() && onQuickAdd) quickAdd() }}
               className="flex-1 bg-transparent text-white placeholder-white/30 text-sm outline-none"
             />
             {query && (
@@ -155,9 +169,28 @@ export default function SlotAssignment({ slot, users, cfg, onAssign, saving }: P
               </div>
             </button>
 
+            {/* Quick-add: shown whenever there is a search query */}
+            {query.trim() && onQuickAdd && (
+              <button
+                onClick={quickAdd}
+                disabled={adding}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-brand-600/15 border-b border-white/5 text-left transition-colors disabled:opacity-50"
+              >
+                <div className="w-10 h-10 rounded-full bg-brand-600/20 border border-brand-500/30 flex items-center justify-center shrink-0">
+                  {adding
+                    ? <div className="w-4 h-4 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
+                    : <UserPlus className="w-4 h-4 text-brand-400" />}
+                </div>
+                <div>
+                  <p className="text-sm text-brand-300 font-semibold">„{query.trim()}" anlegen & zuweisen</p>
+                  <p className="text-xs text-white/30">Nutzer ohne Foto · später im Nutzer-Tab vervollständigen</p>
+                </div>
+              </button>
+            )}
+
             {/* Users */}
             {filtered.length === 0 ? (
-              <p className="px-4 py-8 text-center text-white/30 text-sm">Keine Personen gefunden</p>
+              <p className="px-4 py-6 text-center text-white/30 text-sm">Keine Personen gefunden</p>
             ) : (
               filtered.map((user) => (
                 <button
